@@ -1,0 +1,57 @@
+{
+  "name": "lumier",
+  "version": "0.0.0",
+  "description": "Infrastructure as Code toolkit for building full stack apps using Cloudflare.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "lumier": "./bin/lumier.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "bun run build"
+  },
+  "dependencies": {
+    "lumier-cli": "workspace:*",
+    "zod": "4.3.5"
+  },
+  "peerDependencies": {
+    "@pulumi/cloudflare": "^6.0.0",
+    "@pulumi/pulumi": "^3.0.0",
+    "miniflare": "^4.0.0",
+    "rolldown": "^1.0.0-beta.0"
+  },
+  "peerDependenciesMeta": {
+    "@pulumi/cloudflare": {
+      "optional": true
+    },
+    "@pulumi/pulumi": {
+      "optional": true
+    },
+    "miniflare": {
+      "optional": true
+    },
+    "rolldown": {
+      "optional": true
+    }
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "infrastructure",
+    "iac",
+    "cli"
+  ]
+}

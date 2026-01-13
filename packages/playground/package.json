@@ -1,0 +1,17 @@
+{
+  "name": "playground",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run lumier dev",
+    "deploy": "bun run lumier deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "lumier": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250109.0",
+    "typescript": "^5.7.3"
+  }
+}
