@@ -1,5 +1,7 @@
 import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
-
+import { ThemeProvider } from "better-themes";
+import { SidebarProvider } from "orphos/sidebar";
+import { SITE_TITLE } from "~/lib/constants";
 import appCss from "../styles.css?url";
 
 export const Route = createRootRoute({
@@ -13,7 +15,7 @@ export const Route = createRootRoute({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "TanStack Start Starter",
+        title: SITE_TITLE,
       },
     ],
     links: [
@@ -23,18 +25,28 @@ export const Route = createRootRoute({
       },
     ],
   }),
-
   shellComponent: RootDocument,
 });
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
       <body>
-        {children}
+        <ThemeProvider attribute="class" defaultTheme="system" disableTransitionOnChange enableSystem>
+          <SidebarProvider
+            sidebarWidthMobile="16rem"
+            style={
+              {
+                "--header-height": "calc(var(--spacing) * 14)",
+              } as React.CSSProperties
+            }
+          >
+            {children}
+          </SidebarProvider>
+        </ThemeProvider>
         <Scripts />
       </body>
     </html>

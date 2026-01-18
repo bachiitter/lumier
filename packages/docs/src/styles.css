@@ -1,1 +1,57 @@
 @import "tailwindcss";
+@import "orphos/theme.css";
+@source "../node_modules/orphos/dist";
+@source "../node_modules/streamdown/dist/*.js";
+
+:root {
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-color) transparent;
+    @apply border-border-subtle outline-focus-ring;
+  }
+
+  html {
+    @apply overscroll-y-none;
+  }
+
+  body {
+    @apply min-w-[320px] text-base text-foreground bg-background overscroll-y-none relative;
+  }
+
+  #root {
+    isolation: isolate;
+  }
+
+  code[data-streamdown="inline-code"] {
+    @apply wrap-break-word border border-border-subtle w-fit bg-background-element px-[0.3rem] py-[0.075rem] text-foreground-subtle font-mono text-sm rounded-sm;
+    box-decoration-break: clone;
+  }
+
+  div[data-streamdown="code-block"] {
+    @apply font-mono! w-full!;
+  }
+
+  div[data-streamdown="code-block-header"] {
+    @apply bg-background-subtle! text-foreground-subtle!;
+  }
+
+  pre[data-streamdown="code-block-body"] {
+    @apply bg-background-element! text-sm! leading-[1.7]!;
+  }
+
+  pre[data-streamdown="code-block-body"] code span::before {
+    @apply content-[""]! w-0! mr-0!;
+  }
+
+  pre[data-streamdown="code-block-body"] code span:last-of-type:empty {
+    @apply hidden!;
+  }
+}

@@ -3,6 +3,7 @@
   "exclude": ["node_modules"],
   "extends": "@tsconfig/bun/tsconfig.json",
   "compilerOptions": {
+    "types": ["bun"],
     "module": "ESNext",
     "lib": ["ESNext"],
     "paths": {

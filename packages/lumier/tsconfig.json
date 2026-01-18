@@ -5,6 +5,7 @@
   "compilerOptions": {
     "module": "ESNext",
     "lib": ["ESNext"],
+    "types": ["bun"],
     "paths": {
       "~/*": ["./src/*"]
     },

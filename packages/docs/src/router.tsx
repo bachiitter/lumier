@@ -10,6 +10,7 @@ export const getRouter = () => {
     context: {},
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+    defaultNotFoundComponent: () => <p>Not Found</p>,
   });
 
   return router;
