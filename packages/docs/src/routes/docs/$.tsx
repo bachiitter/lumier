@@ -34,7 +34,7 @@ function RouteComponent() {
   return (
     <>
       <article className="flex-1 min-w-0 wrap-break-word">
-        <div className="mx-auto w-full max-w-2xl flex-1 space-y-10">
+        <div className="mx-auto w-full max-w-3xl flex-1 space-y-10">
           <header className="flex flex-col gap-1">
             <div className="flex items-center justify-between gap-x-2">
               <h1
@@ -59,7 +59,7 @@ function RouteComponent() {
         </div>
       </article>
       <aside className="hidden xl:block w-56">
-        <div className="sticky top-2 text-sm [&amp;_a]:text-muted-foreground [&amp;_a]:hover:text-primary space-y-2 [&amp;_ol]:space-y-2 [&amp;_ol_ol]:pl-3 [&amp;_ol_ol]:mt-2">
+        <div className="sticky top-20 text-sm [&_a]:text-muted-foreground [&_a]:hover:text-primary space-y-2">
           <h2 className="font-medium flex items-center gap-1">
             <IconList className="size-4" />
             On this page

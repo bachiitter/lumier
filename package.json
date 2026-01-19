@@ -35,6 +35,6 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "turbo": "^2.7.4"
+    "turbo": "^2.7.5"
   }
 }

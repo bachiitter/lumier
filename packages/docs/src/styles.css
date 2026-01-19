@@ -23,7 +23,7 @@
   }
 
   body {
-    @apply min-w-[320px] text-base text-foreground bg-background overscroll-y-none relative;
+    @apply min-w-[320px] text-base text-foreground bg-background overscroll-y-none relative overflow-x-hidden;
   }
 
   #root {
@@ -44,7 +44,7 @@
   }
 
   pre[data-streamdown="code-block-body"] {
-    @apply bg-background-element! text-sm! leading-[1.7]!;
+    @apply bg-background-element! text-sm! leading-[1.7]! overflow-x-auto;
   }
 
   pre[data-streamdown="code-block-body"] code span::before {
@@ -53,5 +53,9 @@
 
   pre[data-streamdown="code-block-body"] code span:last-of-type:empty {
     @apply hidden!;
+  }
+
+  div[data-slot="sidebar-container"] {
+    @apply h-full!;
   }
 }

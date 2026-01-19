@@ -7,7 +7,7 @@ import { Streamdown } from "streamdown";
 export function RenderMarkdown({ content }: { content: string }) {
   return (
     <Streamdown
-      className="mx-auto w-full max-w-2xl flex-1 space-y-0"
+      className="mx-auto w-full flex-1 space-y-0"
       components={{
         h1: ({ className, node, style, ...props }) => (
           <h1
