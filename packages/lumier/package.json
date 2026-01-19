@@ -20,8 +20,13 @@
     "bin"
   ],
   "scripts": {
-    "dev": "bun build ./src/cli/index.ts --outfile ./bin/lumier.js --target bun --watch",
-    "build": "bun build ./src/cli/index.ts --outfile ./bin/lumier.js --target bun",
+    "build:cli": "bun build ./src/cli/index.ts --outfile ./bin/lumier.js --target bun --minify",
+    "build:sdk": "bun build ./src/sdk/index.ts --target node --outdir dist/ --minify && tsc --declaration --emitDeclarationOnly --outDir dist/",
+    "build": "bun run build:sdk && bun run build:cli",
+    "dev:cli": "bun build ./src/cli/index.ts --outfile ./bin/lumier.js --target bun --watch",
+    "dev:sdk": "bun build ./src/sdk/index.ts --target node --outdir dist/ --watch",
+    "dev": "bun run dev:sdk & bun run dev:cli",
+    "clean": "rm -rf dist bin/lumier.js",
     "prepublishOnly": "bun run build"
   },
   "dependencies": {

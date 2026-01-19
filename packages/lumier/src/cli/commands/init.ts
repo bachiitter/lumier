@@ -10,27 +10,31 @@ import {
   PACKAGE_JSON_FILENAME,
   STATE_DIR_NAME,
 } from "../lib/constants.js";
-import { CONFIG_TEMPLATE } from "../lib/template.js";
+import { CONFIG_TEMPLATE, WORKER_TEMPLATE } from "../lib/template.js";
 import { ensureFileContains } from "../lib/utils.js";
 
 const ROOT_DIR = process.cwd();
 const LUMIER_DIR = path.join(ROOT_DIR, STATE_DIR_NAME);
 const GITIGNORE_PATH = path.join(ROOT_DIR, GITIGNORE_FILENAME);
+const SRC_PATH = path.join(ROOT_DIR, "src");
+const WORKER_PATH = path.join(SRC_PATH, "index.ts");
 const CONFIG_PATH = path.join(ROOT_DIR, CONFIG_FILENAME);
 const PACKAGE_JSON_PATH = path.join(ROOT_DIR, PACKAGE_JSON_FILENAME);
 
 export async function init() {
-  const [configExists, lumierDirExists, gitignoreExists, gitignoreContent, packageJson] = await Promise.all([
-    Bun.file(CONFIG_PATH).exists(),
-    Bun.file(LUMIER_DIR).exists(),
-    Bun.file(GITIGNORE_PATH).exists(),
-    Bun.file(GITIGNORE_PATH)
-      .exists()
-      .then((exists) => (exists ? Bun.file(GITIGNORE_PATH).text() : "")),
-    Bun.file(PACKAGE_JSON_PATH)
-      .json()
-      .catch(() => ({})),
-  ]);
+  const [configExists, lumierDirExists, gitignoreExists, gitignoreContent, packageJson, workerExisits] =
+    await Promise.all([
+      Bun.file(CONFIG_PATH).exists(),
+      Bun.file(LUMIER_DIR).exists(),
+      Bun.file(GITIGNORE_PATH).exists(),
+      Bun.file(GITIGNORE_PATH)
+        .exists()
+        .then((exists) => (exists ? Bun.file(GITIGNORE_PATH).text() : "")),
+      Bun.file(PACKAGE_JSON_PATH)
+        .json()
+        .catch(() => ({})),
+      Bun.file(WORKER_PATH).exists(),
+    ]);
 
   const appName = packageJson?.name || "my-app";
   const gitignoreNeedsUpdate = !gitignoreContent.includes(STATE_DIR_NAME);
@@ -49,10 +53,15 @@ export async function init() {
       ? `${colors.green}+${colors.reset} Update ${colors.cyan}${GITIGNORE_FILENAME}${colors.reset} - exclude ${STATE_DIR_NAME}/ from git`
       : `${colors.green}+${colors.reset} Create ${colors.cyan}${GITIGNORE_FILENAME}${colors.reset} - exclude ${STATE_DIR_NAME}/ from git`;
 
+  const workerMessage = workerExisits
+    ? `${colors.yellow}!${colors.reset} ${colors.cyan}src/index.ts${colors.reset} ${colors.yellow}(already exists - will be replaced)${colors.reset}`
+    : `${colors.green}+${colors.reset} Create ${colors.cyan}src/index.ts${colors.reset} - worker entry point`;
+
   note(
     `${configExistsMessage}
 ${lumierDirExistsMessage}
-${gitignoreMessage}`,
+${gitignoreMessage}
+${workerMessage}`,
     `${colors.bold}What this does:`
   );
 
@@ -61,6 +70,7 @@ ${gitignoreMessage}`,
   });
 
   if (isCancel(shouldProceed)) {
+    note(`\n${colors.dim}Aborted.${colors.reset}\n`);
     process.exit(0);
   }
 
@@ -96,6 +106,15 @@ ${gitignoreMessage}`,
           return result.exists
             ? `${colors.green}~${colors.reset} Updated ${GITIGNORE_FILENAME} to exclude ${STATE_DIR_NAME} from git`
             : `${colors.green}+${colors.reset} Created ${GITIGNORE_FILENAME} to exclude ${STATE_DIR_NAME} from git`;
+        },
+      },
+      {
+        enabled: !workerExisits,
+        title: `${colors.green}+${colors.reset} Create ${colors.cyan}src/index.ts${colors.reset} - worker entry point`,
+        task: async () => {
+          await mkdir(SRC_PATH, { recursive: true });
+          await Bun.write(WORKER_PATH, WORKER_TEMPLATE);
+          return `${colors.green}+${colors.reset} Created src/index.ts`;
         },
       },
     ]);

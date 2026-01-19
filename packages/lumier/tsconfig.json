@@ -1,8 +1,10 @@
 {
+  "$schema": "http://json.schemastore.org/tsconfig",
   "include": ["**/*.ts"],
   "exclude": ["node_modules"],
   "extends": "@tsconfig/bun/tsconfig.json",
   "compilerOptions": {
+    "erasableSyntaxOnly": true,
     "module": "ESNext",
     "lib": ["ESNext"],
     "types": ["bun"],
