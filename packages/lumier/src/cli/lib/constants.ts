@@ -33,7 +33,7 @@ export const MANIFEST_FILE_NAME = "resources.json";
 // Worker Defaults
 
 /** Default compatibility date for Workers */
-export const DEFAULT_COMPATIBILITY_DATE = "2025-01-08";
+export const DEFAULT_COMPATIBILITY_DATE = "2025-11-17";
 
 /** Default compatibility flags for Workers */
 export const DEFAULT_COMPATIBILITY_FLAGS = ["nodejs_compat"];
