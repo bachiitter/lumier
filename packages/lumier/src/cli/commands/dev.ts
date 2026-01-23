@@ -163,8 +163,20 @@ function buildMiniflareConfig(
   // Only attach stdio for the first worker to avoid duplicate logs
   if (isFirst) {
     miniflareConfig.handleRuntimeStdio = (stdout: Readable, stderr: Readable) => {
-      stdout.pipe(process.stdout);
-      stderr.pipe(process.stderr);
+      // Filter favicon requests from stdout
+      stdout.on("data", (chunk: Buffer) => {
+        const text = chunk.toString();
+        if (!text.includes("/favicon.ico")) {
+          process.stdout.write(chunk);
+        }
+      });
+      // Filter workerd internal errors (broken pipe on reload)
+      stderr.on("data", (chunk: Buffer) => {
+        const text = chunk.toString();
+        if (!(text.includes("workerd/") || text.includes("Broken pipe"))) {
+          process.stderr.write(chunk);
+        }
+      });
     };
   }
 
@@ -245,7 +257,16 @@ export async function dev(options: DevOptions): Promise<void> {
   }
 
   globalWatcher = chokidar.watch(rootDir, {
-    ignored: ["**/node_modules/**", "**/.lumier/**", "**/.env*", "**/*-env.d.ts", "**/*.d.ts", "**/lumier.config.*"],
+    ignored: (filePath: string) => {
+      // Ignore node_modules, .lumier, env files, declaration files, and config
+      if (filePath.includes("node_modules")) return true;
+      if (filePath.includes(".lumier")) return true;
+      if (filePath.includes(".env")) return true;
+      if (filePath.endsWith(".d.ts")) return true;
+      if (filePath.includes("lumier.config.")) return true;
+      return false;
+    },
+    followSymlinks: false,
     ignoreInitial: true,
     awaitWriteFinish: {
       stabilityThreshold: 100,
