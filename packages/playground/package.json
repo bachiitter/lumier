@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "clean": "rm -rf .lumier src lumier.config.ts .gitignore",
     "dev": "bun run lumier dev",
     "deploy": "bun run lumier deploy",
     "typecheck": "tsc --noEmit"

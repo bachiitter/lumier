@@ -1,7 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { confirm, isCancel, note, outro, tasks } from "@clack/prompts";
-// biome-ignore lint/performance/noNamespaceImport: doesn't matter
 import * as Bun from "bun";
 import {
   CONFIG_FILENAME,
