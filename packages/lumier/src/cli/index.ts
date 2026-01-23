@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { type ConfigOptions, clearRegistry, getRegistry, type ResourceRegistry, type RuntimeContext } from "../sdk/index.js";
+import {
+  type ConfigOptions,
+  clearRegistry,
+  getRegistry,
+  type ResourceRegistry,
+  type RuntimeContext,
+} from "../sdk/index.js";
 import { init } from "./commands/init.js";
 import {
   CONFIG_FILENAME,
@@ -142,7 +148,9 @@ function checkStageProtection(app: { protect?: string[] }, stage: string, action
   console.error(
     `\n${colors.red}Error:${colors.reset} Cannot ${action} the "${stage}" stage because it is protected.\n`
   );
-  console.error(`Remove "${stage}" from ${colors.dim}protect${colors.reset} array in your config to allow this action.\n`);
+  console.error(
+    `Remove "${stage}" from ${colors.dim}protect${colors.reset} array in your config to allow this action.\n`
+  );
   return false;
 }
 

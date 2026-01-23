@@ -85,7 +85,6 @@ const CLOUDFLARE_TYPES = new Set([
   "Fetcher",
   "Hyperdrive",
   "AnalyticsEngineDataset",
-  "Ai",
 ]);
 
 const LINKABLE_TYPE_MAP: Record<string, string> = {
@@ -104,10 +103,6 @@ const MANUAL_BINDING_TYPE_MAP: Record<string, string> = {
   plain_text: "string",
   secret_text: "string",
   json: "unknown",
-  ai: "Ai",
-  browser: "Fetcher",
-  version_metadata: "WorkerVersionMetadata",
-  mtls_certificate: "Fetcher",
   service: "Fetcher",
 };
 

@@ -1,6 +1,6 @@
 import * as fs from "node:fs/promises";
-import { type BindingValue, type LinkableResource, ResourceNameSchema } from "../../sdk/index.js";
 import * as z from "zod";
+import { type BindingValue, type LinkableResource, ResourceNameSchema } from "../../sdk/index.js";
 import { colors } from "./constants.js";
 
 export { colors };

@@ -1,17 +1,30 @@
 /**
  * Development Server using Miniflare
+ *
+ * Uses multiple Miniflare instances (one per worker) with cross-worker
+ * communication via function-based service bindings.
  */
 
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import type { Readable } from "node:stream";
 import * as chokidar from "chokidar";
-import { Log, LogLevel, Miniflare, type MiniflareOptions } from "miniflare";
+import {
+  Log,
+  LogLevel,
+  Miniflare,
+  type MiniflareOptions,
+  type WorkerOptions as MiniflareWorkerOptions,
+} from "miniflare";
 import type { ResourceRegistry, WorkerOptions } from "../../sdk/index.js";
 import { build } from "../lib/build.js";
 import { generateAll } from "../lib/codegen.js";
 import { colors, DEFAULT_COMPATIBILITY_DATE, DEFAULT_COMPATIBILITY_FLAGS, DEFAULT_DEV_PORT } from "../lib/constants.js";
 import { isLinkableResource, LumierError, log } from "../lib/utils.js";
+
+// ============================================================================
+// Types
+// ============================================================================
 
 interface MiniflareInstance {
   name: string;
@@ -23,7 +36,6 @@ interface MiniflareInstance {
 // Process Tracking
 // ============================================================================
 
-// Track instances globally for cleanup on error
 let globalInstances: MiniflareInstance[] = [];
 let globalWatcher: chokidar.FSWatcher | null = null;
 let globalConfigWatcher: chokidar.FSWatcher | null = null;
@@ -71,119 +83,211 @@ process.on("uncaughtException", (err) => {
 });
 
 // ============================================================================
-// Binding Helpers
+// Binding Processors
 // ============================================================================
 
-function buildMiniflareConfig(
-  config: ResourceRegistry,
-  worker: { name: string; options: WorkerOptions },
-  buildDir: string,
-  persistDir: string,
-  port: number,
-  stage: string
-) {
-  const { name, options: workerOpts } = worker;
-  const scriptPath = path.join(buildDir, name, `${name}.js`);
+interface BindingCollections {
+  textBindings: Record<string, string>;
+  kvNamespaces: Record<string, string>;
+  r2Buckets: Record<string, string>;
+  d1Databases: Record<string, string>;
+  queueProducers: Record<string, string>;
+  durableObjects: Record<string, { className: string; scriptName?: string; useSQLite?: boolean }>;
+  serviceBindingTargets: Record<string, string>;
+  hyperdrives: Record<string, { connectionString: string }>;
+}
 
-  // Text bindings (plain strings and manual bindings)
-  const textBindings: Record<string, string> = {};
-  // Resource bindings
-  const kvNamespaces: Record<string, string> = {};
-  const r2Buckets: Record<string, string> = {};
-  const d1Databases: Record<string, string> = {};
-  const queueProducers: Record<string, string> = {};
+function createEmptyCollections(): BindingCollections {
+  return {
+    textBindings: {},
+    kvNamespaces: {},
+    r2Buckets: {},
+    d1Databases: {},
+    queueProducers: {},
+    durableObjects: {},
+    serviceBindingTargets: {},
+    hyperdrives: {},
+  };
+}
 
-  // Process all bindings
-  for (const [key, value] of Object.entries(workerOpts.bindings ?? {})) {
-    // Simple string = plain text
+function processLinkableBinding(
+  key: string,
+  value: { type: string; name: string; className?: string; _ref?: Record<string, unknown> },
+  collections: BindingCollections
+): void {
+  const { type, name, className, _ref } = value;
+
+  if (type === "kv") {
+    collections.kvNamespaces[key] = `kv-${name}`;
+  } else if (type === "bucket") {
+    collections.r2Buckets[key] = name;
+  } else if (type === "d1") {
+    collections.d1Databases[key] = `d1-${name}`;
+  } else if (type === "queue") {
+    collections.queueProducers[key] = name;
+  } else if (type === "durable_object") {
+    collections.durableObjects[key] = {
+      className: className ?? "",
+      useSQLite: true,
+    };
+  } else if (type === "worker") {
+    const scriptName = (_ref?.scriptName as string) ?? "";
+    collections.serviceBindingTargets[key] = scriptName;
+  } else if (type === "hyperdrive") {
+    const connString = _ref?.localConnectionString as string | undefined;
+    if (connString) {
+      collections.hyperdrives[key] = { connectionString: connString };
+    }
+  }
+}
+
+function processManualBinding(
+  key: string,
+  value: { type: string; value?: unknown; service?: string; entrypoint?: string },
+  collections: BindingCollections
+): void {
+  const { type } = value;
+
+  if (type === "plain_text" || type === "secret_text") {
+    collections.textBindings[key] = value.value as string;
+  } else if (type === "json") {
+    collections.textBindings[key] = JSON.stringify(value.value);
+  } else if (type === "service" && value.service) {
+    collections.serviceBindingTargets[key] = value.service;
+  }
+}
+
+function processBindings(bindings: Record<string, unknown> | undefined): BindingCollections {
+  const collections = createEmptyCollections();
+
+  for (const [key, value] of Object.entries(bindings ?? {})) {
     if (typeof value === "string") {
-      textBindings[key] = value;
-      continue;
-    }
-
-    // Linkable resource
-    if (isLinkableResource(value)) {
-      switch (value.type) {
-        case "kv":
-          kvNamespaces[key] = `kv-${value.name}`;
-          break;
-        case "bucket":
-          r2Buckets[key] = value.name;
-          break;
-        case "d1":
-          d1Databases[key] = `d1-${value.name}`;
-          break;
-        case "queue":
-          queueProducers[key] = value.name;
-          break;
-        // Other resource types handled in deploy only
-      }
-      continue;
-    }
-
-    // Manual binding types
-    if ("type" in value) {
-      switch (value.type) {
-        case "plain_text":
-        case "secret_text":
-          textBindings[key] = value.value;
-          break;
-        case "json":
-          textBindings[key] = JSON.stringify(value.value);
-          break;
-        // AI, browser, etc. not supported in local dev
-      }
+      collections.textBindings[key] = value;
+    } else if (isLinkableResource(value)) {
+      processLinkableBinding(key, value as never, collections);
+    } else if (typeof value === "object" && value !== null && "type" in value) {
+      processManualBinding(key, value as never, collections);
     }
   }
 
-  const miniflareConfig: MiniflareOptions = {
+  return collections;
+}
+
+// ============================================================================
+// Config Builders
+// ============================================================================
+
+function buildCronsByWorker(config: ResourceRegistry): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  for (const cronEntry of config.crons) {
+    const workerName = cronEntry.options.worker._ref.scriptName;
+    const crons = map.get(workerName) ?? [];
+    crons.push(cronEntry.options.schedule);
+    map.set(workerName, crons);
+  }
+  return map;
+}
+
+function buildQueueConsumers(
+  config: ResourceRegistry
+): Record<string, { maxBatchSize?: number; maxBatchTimeout?: number; maxRetries?: number }> {
+  const consumers: Record<string, { maxBatchSize?: number; maxBatchTimeout?: number; maxRetries?: number }> = {};
+  for (const queueEntry of config.queues) {
+    const consumer = queueEntry.options?.consumer;
+    if (consumer) {
+      consumers[queueEntry.name] = {
+        maxBatchSize: consumer.settings?.batchSize,
+        maxBatchTimeout: consumer.settings?.batchTimeout,
+        maxRetries: consumer.settings?.maxRetries,
+      };
+    }
+  }
+  return consumers;
+}
+
+function buildMiniflareConfig(
+  worker: { name: string; options: WorkerOptions },
+  config: ResourceRegistry,
+  buildDir: string,
+  persistDir: string,
+  port: number,
+  stage: string,
+  cronsByWorker: Map<string, string[]>,
+  workerPortMap: Map<string, number>
+): MiniflareOptions {
+  const { name, options: workerOpts } = worker;
+  const fullName = `${config.app.name}-${stage}-${name}`;
+  const scriptPath = path.join(buildDir, name, `${name}.js`);
+  const collections = processBindings(workerOpts.bindings as Record<string, unknown>);
+
+  // Build service bindings as fetch functions to other worker ports
+  const serviceBindings: Record<string, (request: Request) => Promise<Response>> = {};
+  for (const [bindingName, targetWorkerName] of Object.entries(collections.serviceBindingTargets)) {
+    const targetPort = workerPortMap.get(targetWorkerName);
+    if (targetPort) {
+      serviceBindings[bindingName] = (request: Request) => {
+        const url = new URL(request.url);
+        url.host = `localhost:${targetPort}`;
+        return fetch(new Request(url.toString(), request));
+      };
+    }
+  }
+
+  const workerConfig: MiniflareWorkerOptions = {
+    name: fullName,
+    scriptPath,
+    modules: true,
+    compatibilityDate: workerOpts.compatibilityDate ?? DEFAULT_COMPATIBILITY_DATE,
+    compatibilityFlags: workerOpts.compatibilityFlags ?? DEFAULT_COMPATIBILITY_FLAGS,
+    bindings: collections.textBindings,
+    kvNamespaces: collections.kvNamespaces,
+    r2Buckets: collections.r2Buckets,
+    d1Databases: collections.d1Databases,
+    queueProducers: collections.queueProducers,
+    durableObjects: Object.keys(collections.durableObjects).length > 0 ? collections.durableObjects : undefined,
+    serviceBindings: Object.keys(serviceBindings).length > 0 ? serviceBindings : undefined,
+    hyperdrives: Object.keys(collections.hyperdrives).length > 0 ? collections.hyperdrives : undefined,
+  };
+
+  // Add crons if defined for this worker
+  const crons = cronsByWorker.get(name);
+  if (crons && crons.length > 0) {
+    (workerConfig as Record<string, unknown>).crons = crons;
+  }
+
+  // Add unsafeEvalBinding for nodejs_compat
+  const flags = workerOpts.compatibilityFlags ?? [];
+  if (flags.includes("nodejs_compat") || flags.includes("nodejs_compat_v2")) {
+    (workerConfig as Record<string, unknown>).unsafeEvalBinding = "__UNSAFE_EVAL";
+  }
+
+  const queueConsumers = buildQueueConsumers(config);
+
+  return {
     log: new Log(LogLevel.WARN),
     verbose: false,
     port,
-    workers: [
-      {
-        name: `${config.app.name}-${stage}-${name}`,
-        scriptPath,
-        modules: true,
-        compatibilityDate: workerOpts.compatibilityDate ?? DEFAULT_COMPATIBILITY_DATE,
-        compatibilityFlags: workerOpts.compatibilityFlags ?? DEFAULT_COMPATIBILITY_FLAGS,
-        bindings: textBindings,
-        kvNamespaces,
-        r2Buckets,
-        d1Databases,
-        queueProducers,
-      },
-    ],
+    workers: [workerConfig],
     kvPersist: path.join(persistDir, "kv"),
     r2Persist: path.join(persistDir, "r2"),
     d1Persist: path.join(persistDir, "d1"),
     durableObjectsPersist: path.join(persistDir, "do"),
-    handleRuntimeStdio: (stdout: Readable, stderr: Readable) => {
-      // Filter favicon requests and ready messages from stdout
-      stdout.on("data", (chunk: Buffer) => {
-        const text = chunk.toString();
-        const shouldSkip = text.includes("/favicon.ico") || text.includes("Ready on") || text.includes("[mf:info]");
-        if (!shouldSkip) {
-          process.stdout.write(chunk);
-        }
-      });
-      // Filter workerd internal errors (broken pipe on reload) and ready messages
+    queueConsumers: Object.keys(queueConsumers).length > 0 ? queueConsumers : undefined,
+    handleRuntimeStdio: (_stdout: Readable, stderr: Readable) => {
       stderr.on("data", (chunk: Buffer) => {
         const text = chunk.toString();
-        const shouldSkip =
-          text.includes("workerd/") ||
-          text.includes("Broken pipe") ||
-          text.includes("Ready on") ||
-          text.includes("[mf:info]");
+        const shouldSkip = text.includes("workerd/") || text.includes("Broken pipe");
         if (!shouldSkip) {
           process.stderr.write(chunk);
         }
       });
     },
   };
-
-  return miniflareConfig;
 }
+
+// ============================================================================
+// Dev Server
+// ============================================================================
 
 export interface DevOptions {
   stage: string;
@@ -222,25 +326,51 @@ export async function dev(options: DevOptions): Promise<void> {
     throw new LumierError("No workers found", "NO_WORKERS");
   }
 
-  const instances: MiniflareInstance[] = [];
+  // Build port map first (needed for service bindings)
+  const workerPortMap = new Map<string, number>();
   let currentPort = basePort;
+  for (const worker of workers) {
+    workerPortMap.set(worker.name, currentPort++);
+  }
 
-  for (let i = 0; i < workers.length; i++) {
-    const worker = workers[i]!;
-    const port = currentPort++;
-    const miniflareConfig = buildMiniflareConfig(config, worker, buildDir, persistDir, port, stage);
+  const cronsByWorker = buildCronsByWorker(config);
+
+  // Create separate Miniflare instance per worker
+  const instances: MiniflareInstance[] = [];
+  for (const worker of workers) {
+    const port = workerPortMap.get(worker.name)!;
+    const miniflareConfig = buildMiniflareConfig(
+      worker,
+      config,
+      buildDir,
+      persistDir,
+      port,
+      stage,
+      cronsByWorker,
+      workerPortMap
+    );
 
     const mf = new Miniflare(miniflareConfig);
     await mf.ready;
     instances.push({ name: worker.name, port, mf });
   }
 
-  // Store globally for shutdown handler
   globalInstances = instances;
 
   console.log("");
   for (const instance of instances) {
     log(`+ ${instance.name}`, `http://localhost:${instance.port}`);
+  }
+
+  // Show cron info if any
+  if (config.crons.length > 0) {
+    console.log("");
+    for (const instance of instances) {
+      const workerCrons = cronsByWorker.get(instance.name);
+      if (workerCrons && workerCrons.length > 0) {
+        log("~ cron", `${instance.name}: curl "http://localhost:${instance.port}/cdn-cgi/mf/scheduled"`);
+      }
+    }
   }
 
   console.log(`\n${colors.dim}Watching for changes... (Ctrl+C to stop)${colors.reset}\n`);
@@ -257,12 +387,22 @@ export async function dev(options: DevOptions): Promise<void> {
       config = await loadConfig();
       await build(config, { stage, rootDir, lumierDir, silent: true });
 
-      for (let i = 0; i < globalInstances.length; i++) {
-        const instance = globalInstances[i]!;
+      const updatedCrons = buildCronsByWorker(config);
+
+      for (const instance of globalInstances) {
         const worker = config.workers.find((w) => w.name === instance.name);
         if (!worker) continue;
 
-        const mfConfig = buildMiniflareConfig(config, worker, buildDir, persistDir, instance.port, stage);
+        const mfConfig = buildMiniflareConfig(
+          worker,
+          config,
+          buildDir,
+          persistDir,
+          instance.port,
+          stage,
+          updatedCrons,
+          workerPortMap
+        );
         await instance.mf.setOptions(mfConfig);
       }
 
@@ -279,7 +419,6 @@ export async function dev(options: DevOptions): Promise<void> {
 
   globalWatcher = chokidar.watch(rootDir, {
     ignored: (filePath: string) => {
-      // Ignore node_modules, .lumier, env files, declaration files, and config
       if (filePath.includes("node_modules")) return true;
       if (filePath.includes(".lumier")) return true;
       if (filePath.includes(".env")) return true;
@@ -325,30 +464,44 @@ export async function dev(options: DevOptions): Promise<void> {
       await build(config, { stage, rootDir, lumierDir, silent: true });
 
       const filteredWorkers = options.worker ? config.workers.filter((w) => w.name === options.worker) : config.workers;
+      const updatedCrons = buildCronsByWorker(config);
 
+      // Check if workers changed
       const currentNames = new Set(globalInstances.map((i) => i.name));
       const newNames = new Set(filteredWorkers.map((w) => w.name));
-
-      // Check if workers were added or removed
       const addedWorkers = filteredWorkers.filter((w) => !currentNames.has(w.name));
       const removedWorkers = globalInstances.filter((i) => !newNames.has(i.name));
 
       if (addedWorkers.length > 0 || removedWorkers.length > 0) {
-        // Dispose all existing instances
+        // Dispose all and restart
         for (const instance of globalInstances) {
           await instance.mf.dispose();
         }
         globalInstances = [];
 
-        // Visual separator for restart
         console.log(`\n${colors.dim}${"─".repeat(50)}${colors.reset}\n`);
         log("~ restart", "Workers changed, restarting...");
 
-        // Start fresh instances for all workers
+        // Rebuild port map
+        const newPortMap = new Map<string, number>();
         let nextPort = basePort;
         for (const worker of filteredWorkers) {
-          const port = nextPort++;
-          const mfConfig = buildMiniflareConfig(config, worker, buildDir, persistDir, port, stage);
+          newPortMap.set(worker.name, nextPort++);
+        }
+
+        // Start new instances
+        for (const worker of filteredWorkers) {
+          const port = newPortMap.get(worker.name)!;
+          const mfConfig = buildMiniflareConfig(
+            worker,
+            config,
+            buildDir,
+            persistDir,
+            port,
+            stage,
+            updatedCrons,
+            newPortMap
+          );
           const mf = new Miniflare(mfConfig);
           await mf.ready;
           globalInstances.push({ name: worker.name, port, mf });
@@ -360,17 +513,25 @@ export async function dev(options: DevOptions): Promise<void> {
         }
         console.log("");
       } else {
-        // Update existing workers only
-        for (let i = 0; i < globalInstances.length; i++) {
-          const instance = globalInstances[i]!;
+        // Update existing workers
+        for (const instance of globalInstances) {
           const worker = filteredWorkers.find((w) => w.name === instance.name);
           if (!worker) continue;
 
-          const mfConfig = buildMiniflareConfig(config, worker, buildDir, persistDir, instance.port, stage);
+          const mfConfig = buildMiniflareConfig(
+            worker,
+            config,
+            buildDir,
+            persistDir,
+            instance.port,
+            stage,
+            updatedCrons,
+            workerPortMap
+          );
           await instance.mf.setOptions(mfConfig);
         }
 
-        log("+ reload", "Workers updated");
+        log("+ reload", "Config updated");
       }
     } catch (err) {
       if (err instanceof LumierError) {
@@ -383,7 +544,6 @@ export async function dev(options: DevOptions): Promise<void> {
   });
 
   // Keep the process alive
-
-  // biome-ignore lint/suspicious/noEmptyBlockStatements: shut up!
+  // biome-ignore lint/suspicious/noEmptyBlockStatements: intentional
   await new Promise(() => {});
 }

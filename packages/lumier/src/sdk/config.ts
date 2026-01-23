@@ -357,6 +357,7 @@ export function StaticSite(name: string, options: StaticSiteOptions): StaticSite
  * ```ts
  * const pg = Hyperdrive('postgres', {
  *   connectionString: ctx.secrets.DATABASE_URL,
+ *   localConnectionString: 'postgres://localhost:5432/mydb', // For dev server
  * });
  * ```
  */
@@ -367,7 +368,7 @@ export function Hyperdrive(name: string, options: HyperdriveOptions): Hyperdrive
   return {
     type: "hyperdrive",
     name,
-    _ref: { id: `hyperdrive-${name}` },
+    _ref: { id: `hyperdrive-${name}`, localConnectionString: options.localConnectionString },
   };
 }
 

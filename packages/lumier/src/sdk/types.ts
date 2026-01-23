@@ -97,7 +97,7 @@ export interface StaticSiteOutput {
 export interface HyperdriveOutput {
   readonly type: "hyperdrive";
   readonly name: string;
-  readonly _ref: { id: string; existing?: boolean };
+  readonly _ref: { id: string; existing?: boolean; localConnectionString?: string };
 }
 
 export interface AnalyticsEngineOutput {
@@ -140,27 +140,6 @@ export interface JsonBinding {
   value: unknown;
 }
 
-/** AI binding for Workers AI */
-export interface AIBinding {
-  type: "ai";
-}
-
-/** Browser rendering binding */
-export interface BrowserBinding {
-  type: "browser";
-}
-
-/** Version metadata binding */
-export interface VersionMetadataBinding {
-  type: "version_metadata";
-}
-
-/** mTLS certificate binding */
-export interface MTLSBinding {
-  type: "mtls_certificate";
-  certificateId: string;
-}
-
 /** Service binding to another Worker */
 export interface ServiceBinding {
   type: "service";
@@ -169,15 +148,7 @@ export interface ServiceBinding {
 }
 
 /** All manual binding types */
-export type ManualBinding =
-  | PlainTextBinding
-  | SecretTextBinding
-  | JsonBinding
-  | AIBinding
-  | BrowserBinding
-  | VersionMetadataBinding
-  | MTLSBinding
-  | ServiceBinding;
+export type ManualBinding = PlainTextBinding | SecretTextBinding | JsonBinding | ServiceBinding;
 
 /** Binding value - can be a resource, manual binding, or simple string */
 export type BindingValue = LinkableResource | ManualBinding | string;
@@ -457,8 +428,11 @@ export interface StaticSiteOptions {
 
 /** Hyperdrive configuration */
 export interface HyperdriveOptions {
-  /** PostgreSQL connection string */
+  /** PostgreSQL connection string (for production/Cloudflare) */
   connectionString: string;
+
+  /** Local connection string for dev server (bypasses Hyperdrive, connects directly) */
+  localConnectionString?: string;
 
   /** Caching configuration */
   caching?: {
