@@ -6,8 +6,8 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import type { Readable } from "node:stream";
 import * as chokidar from "chokidar";
-import type { ResourceRegistry, WorkerOptions } from "../../sdk/index.js";
 import { Log, LogLevel, Miniflare, type MiniflareOptions } from "miniflare";
+import type { ResourceRegistry, WorkerOptions } from "../../sdk/index.js";
 import { build } from "../lib/build.js";
 import { generateAll } from "../lib/codegen.js";
 import { colors, DEFAULT_COMPATIBILITY_DATE, DEFAULT_COMPATIBILITY_FLAGS, DEFAULT_DEV_PORT } from "../lib/constants.js";
@@ -158,11 +158,23 @@ function buildMiniflareConfig(
     r2Persist: path.join(persistDir, "r2"),
     d1Persist: path.join(persistDir, "d1"),
     durableObjectsPersist: path.join(persistDir, "do"),
-    handleRuntimeStdio: (_stdout: Readable, stderr: Readable) => {
+    handleRuntimeStdio: (stdout: Readable, stderr: Readable) => {
+      // Filter favicon requests and ready messages from stdout
+      stdout.on("data", (chunk: Buffer) => {
+        const text = chunk.toString();
+        const shouldSkip = text.includes("/favicon.ico") || text.includes("Ready on") || text.includes("[mf:info]");
+        if (!shouldSkip) {
+          process.stdout.write(chunk);
+        }
+      });
       // Filter workerd internal errors (broken pipe on reload) and ready messages
       stderr.on("data", (chunk: Buffer) => {
         const text = chunk.toString();
-        const shouldSkip = text.includes("workerd/") || text.includes("Broken pipe");
+        const shouldSkip =
+          text.includes("workerd/") ||
+          text.includes("Broken pipe") ||
+          text.includes("Ready on") ||
+          text.includes("[mf:info]");
         if (!shouldSkip) {
           process.stderr.write(chunk);
         }
