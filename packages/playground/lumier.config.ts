@@ -13,7 +13,7 @@ export default $config({
     const db = D1("DATABASE");
 
     const api = Worker("Api", {
-      entry: "src/index.ts",
+      entry: "src/api.ts",
       url: true,
       bindings: {
         STAGE: ctx.stage,
@@ -23,9 +23,17 @@ export default $config({
       },
     });
 
+    // const auth = Worker("Auth", {
+    //   entry: "src/auth.ts",
+    //   url: true,
+    //   bindings: {
+    //     STAGE: ctx.stage,
+    //   },
+    // });
+
     return {
       api: api.url,
+      // auth: auth.url,
     };
   },
 });
-

@@ -9,19 +9,22 @@ import type { ResourceRegistry } from "lumier";
 import { rolldown } from "rolldown";
 import { cloudflare, env, nodeless } from "unenv";
 import type { BuildManifest } from "./types.js";
-import { formatBytes, log } from "./utils.js";
+import { formatBytes, LumierError, log } from "./utils.js";
+
+const ENV_ACCESS_PATTERN = /\benv\.(\w+)\b/g;
 
 export interface BuildContext {
   stage: string;
   minify?: boolean;
   rootDir: string;
   lumierDir: string;
+  silent?: boolean;
 }
 
 const cloudflareExternalsRegex = /^cloudflare:/;
 
 export async function build(config: ResourceRegistry, options: BuildContext): Promise<BuildManifest> {
-  const { stage, rootDir, lumierDir } = options;
+  const { stage, rootDir, lumierDir, silent = false } = options;
   const isProd = options.minify ?? stage === "production";
   const buildDir = path.join(lumierDir, "build");
 
@@ -36,7 +39,7 @@ export async function build(config: ResourceRegistry, options: BuildContext): Pr
   // Build Workers
   for (const worker of config.workers) {
     const { name, options: workerOpts } = worker;
-    log(`->  ${name}`, `Building ${workerOpts.entry}...`);
+    if (!silent) log(`->  ${name}`, `Building ${workerOpts.entry}...`);
 
     const workerDir = path.join(buildDir, name);
     await mkdir(workerDir, { recursive: true });
@@ -89,8 +92,33 @@ export async function build(config: ResourceRegistry, options: BuildContext): Pr
       await bundle.close();
 
       const bundleSize = fs.statSync(outfile).size;
+
+      const bundledCode = fs.readFileSync(outfile, "utf-8");
+      const configuredBindings = new Set(Object.keys(workerOpts.bindings ?? {}));
+      const usedBindings = new Set<string>();
+
+      let match: RegExpExecArray | null;
+      while ((match = ENV_ACCESS_PATTERN.exec(bundledCode)) !== null) {
+        usedBindings.add(match[1]!);
+      }
+
+      const missingBindings: string[] = [];
+      for (const binding of usedBindings) {
+        if (!configuredBindings.has(binding)) {
+          missingBindings.push(binding);
+        }
+      }
+
+      if (missingBindings.length > 0) {
+        throw new LumierError(
+          `Worker "${name}" uses bindings that are not configured: ${missingBindings.join(", ")}\n` +
+            `Add them to the worker's bindings in lumier.config.ts`,
+          "MISSING_BINDINGS"
+        );
+      }
+
       manifest.workers.push({ name, entry: workerOpts.entry, outputPath: outfile, bundleSize });
-      log(`+ ${name}`, `Built (${formatBytes(bundleSize)})`);
+      if (!silent) log(`+ ${name}`, `Built (${formatBytes(bundleSize)})`);
     } catch (err) {
       log(`x ${name}`, `Failed: ${err}`);
       throw err;

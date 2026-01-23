@@ -80,8 +80,7 @@ function buildMiniflareConfig(
   buildDir: string,
   persistDir: string,
   port: number,
-  stage: string,
-  isFirst: boolean
+  stage: string
 ) {
   const { name, options: workerOpts } = worker;
   const scriptPath = path.join(buildDir, name, `${name}.js`);
@@ -160,25 +159,22 @@ function buildMiniflareConfig(
     d1Persist: path.join(persistDir, "d1"),
   };
 
-  // Only attach stdio for the first worker to avoid duplicate logs
-  if (isFirst) {
-    miniflareConfig.handleRuntimeStdio = (stdout: Readable, stderr: Readable) => {
-      // Filter favicon requests from stdout
-      stdout.on("data", (chunk: Buffer) => {
-        const text = chunk.toString();
-        if (!text.includes("/favicon.ico")) {
-          process.stdout.write(chunk);
-        }
-      });
-      // Filter workerd internal errors (broken pipe on reload)
-      stderr.on("data", (chunk: Buffer) => {
-        const text = chunk.toString();
-        if (!(text.includes("workerd/") || text.includes("Broken pipe"))) {
-          process.stderr.write(chunk);
-        }
-      });
-    };
-  }
+  miniflareConfig.handleRuntimeStdio = (stdout: Readable, stderr: Readable) => {
+    // Filter favicon requests from stdout
+    stdout.on("data", (chunk: Buffer) => {
+      const text = chunk.toString();
+      if (!text.includes("/favicon.ico")) {
+        process.stdout.write(chunk);
+      }
+    });
+    // Filter workerd internal errors (broken pipe on reload)
+    stderr.on("data", (chunk: Buffer) => {
+      const text = chunk.toString();
+      if (!(text.includes("workerd/") || text.includes("Broken pipe"))) {
+        process.stderr.write(chunk);
+      }
+    });
+  };
 
   return miniflareConfig;
 }
@@ -202,7 +198,15 @@ export async function dev(options: DevOptions): Promise<void> {
   await mkdir(persistDir, { recursive: true });
 
   // Build and generate
-  build(config, { stage, rootDir, lumierDir });
+  try {
+    await build(config, { stage, rootDir, lumierDir, silent: true });
+  } catch (err) {
+    if (err instanceof LumierError) {
+      log("x error", err.message);
+    } else {
+      throw err;
+    }
+  }
   generateAll(config, rootDir, lumierDir);
 
   const workers = options.worker ? config.workers.filter((w) => w.name === options.worker) : config.workers;
@@ -218,17 +222,20 @@ export async function dev(options: DevOptions): Promise<void> {
   for (let i = 0; i < workers.length; i++) {
     const worker = workers[i]!;
     const port = currentPort++;
-    const isFirst = i === 0;
-    const miniflareConfig = buildMiniflareConfig(config, worker, buildDir, persistDir, port, stage, isFirst);
+    const miniflareConfig = buildMiniflareConfig(config, worker, buildDir, persistDir, port, stage);
 
     const mf = new Miniflare(miniflareConfig);
     await mf.ready;
-    log(`+ ${worker.name}`, `http://localhost:${port}`);
     instances.push({ name: worker.name, port, mf });
   }
 
   // Store globally for shutdown handler
   globalInstances = instances;
+
+  console.log("");
+  for (const instance of instances) {
+    log(`+ ${instance.name}`, `http://localhost:${instance.port}`);
+  }
 
   console.log(`\n${colors.dim}Watching for changes... (Ctrl+C to stop)${colors.reset}\n`);
 
@@ -240,19 +247,27 @@ export async function dev(options: DevOptions): Promise<void> {
     isRebuilding = true;
     log("~ rebuild", filename);
 
-    config = await loadConfig();
-    await build(config, { stage, rootDir, lumierDir });
+    try {
+      config = await loadConfig();
+      await build(config, { stage, rootDir, lumierDir, silent: true });
 
-    for (let i = 0; i < globalInstances.length; i++) {
-      const instance = globalInstances[i]!;
-      const worker = config.workers.find((w) => w.name === instance.name);
-      if (!worker) continue;
+      for (let i = 0; i < globalInstances.length; i++) {
+        const instance = globalInstances[i]!;
+        const worker = config.workers.find((w) => w.name === instance.name);
+        if (!worker) continue;
 
-      const mfConfig = buildMiniflareConfig(config, worker, buildDir, persistDir, instance.port, stage, i === 0);
-      await instance.mf.setOptions(mfConfig);
+        const mfConfig = buildMiniflareConfig(config, worker, buildDir, persistDir, instance.port, stage);
+        await instance.mf.setOptions(mfConfig);
+      }
+
+      log("+ reload", "Workers updated");
+    } catch (err) {
+      if (err instanceof LumierError) {
+        log("x error", err.message);
+      } else {
+        log("x error", String(err));
+      }
     }
-
-    log("+ reload", "Workers updated");
     isRebuilding = false;
   }
 
@@ -293,25 +308,71 @@ export async function dev(options: DevOptions): Promise<void> {
     isRebuilding = true;
     log("~ config", "lumier.config changed");
 
-    config = await loadConfig();
-    const result = generateAll(config, rootDir, lumierDir, { force: true });
+    try {
+      config = await loadConfig();
+      const result = generateAll(config, rootDir, lumierDir, { force: true });
 
-    if (result.generated.length > 0) {
-      log("+ types", result.generated.join(", "));
+      if (result.generated.length > 0) {
+        log("+ types", result.generated.join(", "));
+      }
+
+      await build(config, { stage, rootDir, lumierDir, silent: true });
+
+      const filteredWorkers = options.worker ? config.workers.filter((w) => w.name === options.worker) : config.workers;
+
+      const currentNames = new Set(globalInstances.map((i) => i.name));
+      const newNames = new Set(filteredWorkers.map((w) => w.name));
+
+      // Check if workers were added or removed
+      const addedWorkers = filteredWorkers.filter((w) => !currentNames.has(w.name));
+      const removedWorkers = globalInstances.filter((i) => !newNames.has(i.name));
+
+      if (addedWorkers.length > 0 || removedWorkers.length > 0) {
+        // Dispose all existing instances
+        for (const instance of globalInstances) {
+          await instance.mf.dispose();
+        }
+        globalInstances = [];
+
+        // Visual separator for restart
+        console.log(`\n${colors.dim}${"─".repeat(50)}${colors.reset}\n`);
+        log("~ restart", "Workers changed, restarting...");
+
+        // Start fresh instances for all workers
+        let nextPort = basePort;
+        for (const worker of filteredWorkers) {
+          const port = nextPort++;
+          const mfConfig = buildMiniflareConfig(config, worker, buildDir, persistDir, port, stage);
+          const mf = new Miniflare(mfConfig);
+          await mf.ready;
+          globalInstances.push({ name: worker.name, port, mf });
+        }
+
+        console.log("");
+        for (const instance of globalInstances) {
+          log(`+ ${instance.name}`, `http://localhost:${instance.port}`);
+        }
+        console.log("");
+      } else {
+        // Update existing workers only
+        for (let i = 0; i < globalInstances.length; i++) {
+          const instance = globalInstances[i]!;
+          const worker = filteredWorkers.find((w) => w.name === instance.name);
+          if (!worker) continue;
+
+          const mfConfig = buildMiniflareConfig(config, worker, buildDir, persistDir, instance.port, stage);
+          await instance.mf.setOptions(mfConfig);
+        }
+
+        log("+ reload", "Workers updated");
+      }
+    } catch (err) {
+      if (err instanceof LumierError) {
+        log("x error", err.message);
+      } else {
+        log("x error", String(err));
+      }
     }
-
-    await build(config, { stage, rootDir, lumierDir });
-
-    for (let i = 0; i < globalInstances.length; i++) {
-      const instance = globalInstances[i]!;
-      const worker = config.workers.find((w) => w.name === instance.name);
-      if (!worker) continue;
-
-      const mfConfig = buildMiniflareConfig(config, worker, buildDir, persistDir, instance.port, stage, i === 0);
-      await instance.mf.setOptions(mfConfig);
-    }
-
-    log("+ reload", "Workers updated");
     isRebuilding = false;
   });
 
