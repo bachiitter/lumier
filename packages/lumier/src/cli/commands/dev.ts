@@ -158,17 +158,16 @@ function buildMiniflareConfig(
     r2Persist: path.join(persistDir, "r2"),
     d1Persist: path.join(persistDir, "d1"),
     durableObjectsPersist: path.join(persistDir, "do"),
-  };
-
-  miniflareConfig.handleRuntimeStdio = (_stdout: Readable, stderr: Readable) => {
-    // Filter workerd internal errors (broken pipe on reload) and ready messages
-    stderr.on("data", (chunk: Buffer) => {
-      const text = chunk.toString();
-      const shouldSkip = text.includes("workerd/") || text.includes("Broken pipe");
-      if (!shouldSkip) {
-        process.stderr.write(chunk);
-      }
-    });
+    handleRuntimeStdio: (_stdout: Readable, stderr: Readable) => {
+      // Filter workerd internal errors (broken pipe on reload) and ready messages
+      stderr.on("data", (chunk: Buffer) => {
+        const text = chunk.toString();
+        const shouldSkip = text.includes("workerd/") || text.includes("Broken pipe");
+        if (!shouldSkip) {
+          process.stderr.write(chunk);
+        }
+      });
+    },
   };
 
   return miniflareConfig;
