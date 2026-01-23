@@ -5,10 +5,9 @@
 import * as fs from "node:fs";
 import { mkdir } from "node:fs/promises";
 import * as path from "node:path";
-import { rolldown } from "rolldown";
-
-import { cloudflare, env, nodeless } from "unenv";
 import type { ResourceRegistry } from "lumier";
+import { rolldown } from "rolldown";
+import { cloudflare, env, nodeless } from "unenv";
 import type { BuildManifest } from "./types.js";
 import { formatBytes, log } from "./utils.js";
 
@@ -18,6 +17,8 @@ export interface BuildContext {
   rootDir: string;
   lumierDir: string;
 }
+
+const cloudflareExternalsRegex = /^cloudflare:/;
 
 export async function build(config: ResourceRegistry, options: BuildContext): Promise<BuildManifest> {
   const { stage, rootDir, lumierDir } = options;
@@ -51,7 +52,7 @@ export async function build(config: ResourceRegistry, options: BuildContext): Pr
       const nodeEnvReplacement = JSON.stringify(isProd ? "production" : "development");
 
       // Cloudflare runtime modules should never be bundled
-      const cloudflareExternals = [/^cloudflare:/];
+      const cloudflareExternals = [cloudflareExternalsRegex];
       const userExternals = buildOpts.external ?? [];
       const external = [...cloudflareExternals, ...userExternals];
 

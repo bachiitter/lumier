@@ -1,5 +1,4 @@
 #!/usr/bin/env bun
-import { intro, note, outro } from "@clack/prompts";
 import * as Bun from "bun";
 import { type ConfigOptions, clearRegistry, getRegistry, type ResourceRegistry, type RuntimeContext } from "lumier";
 import path from "path";
@@ -121,24 +120,25 @@ async function loadConfig(stage: string): Promise<ResourceRegistry> {
   return registry;
 }
 
-const printHelp = () =>
-  note(
-    `init              Initialize a new project
-dev               Start dev server with hot reload using Miniflare
-dev --live        Deploy and watch for changes (real Cloudflare)
-deploy            Build and deploy to Cloudflare
-deploy --preview  Preview changes without deploying
-destroy           Destroy resources
-secret            Manage encrypted secrets
-shell            Get environment with resource IDs
-version          Show version`,
-    `${colors.bold}Commands:`
-  );
+function printHelp(): void {
+  console.log(`
+${colors.bold}Commands:${colors.reset}
+  init              Initialize a new project
+  dev               Start dev server with hot reload using Miniflare
+  dev --live        Deploy and watch for changes (real Cloudflare)
+  deploy            Build and deploy to Cloudflare
+  deploy --preview  Preview changes without deploying
+  destroy           Destroy resources
+  secret            Manage encrypted secrets
+  shell             Get environment with resource IDs
+  version           Show version
+`);
+}
 
 async function main(args: Array<string>): Promise<void> {
   const { command, flags } = parseArgs(args);
 
-  intro(` ${colors.bold}${colors.cyan}Lumier${colors.reset} - Infrastructure as Code for Cloudflare`);
+  console.log(`${colors.bold}${colors.cyan}Lumier${colors.reset} - Infrastructure as Code for Cloudflare`);
 
   verbose = Boolean(flags.verbose) || Bun.env.DEBUG === "1";
 
@@ -191,7 +191,7 @@ async function main(args: Array<string>): Promise<void> {
       }
     }
   } catch (error) {
-    outro(`${colors.red}Error:${colors.reset} ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`\n${colors.red}Error:${colors.reset} ${error instanceof Error ? error.message : String(error)}\n`);
     process.exit(1);
   }
 }
