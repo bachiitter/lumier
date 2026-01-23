@@ -137,7 +137,7 @@ function buildMiniflareConfig(
   }
 
   const miniflareConfig: MiniflareOptions = {
-    log: new Log(LogLevel.INFO),
+    log: new Log(LogLevel.WARN),
     verbose: false,
     port,
     workers: [
