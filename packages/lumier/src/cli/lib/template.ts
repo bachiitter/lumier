@@ -2,14 +2,26 @@
 export const CONFIG_TEMPLATE = (name: string) => `import { $config, Worker } from "lumier";
 
 export default $config({
-  app() {
+  app(input) {
     return {
       name: "${name}",
       protect: ["production"],
+      removal: input?.stage === "production" ? "retain" : "remove",
     };
   },
   async run(ctx) {
-    return {};
+
+    const api = Worker("Api", {
+      entry: "src/index.ts",
+      url: true,
+      bindings: {
+        STAGE: ctx.stage
+      }
+    })
+
+    return {
+      api: api.url
+    };
   },
 });
 `;

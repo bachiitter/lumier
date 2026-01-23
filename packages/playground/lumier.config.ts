@@ -1,10 +1,11 @@
 import { $config, Bucket, D1, KV, Worker } from "lumier";
 
 export default $config({
-  app() {
+  app(input) {
     return {
       name: "playground",
       protect: ["production"],
+      removal: input?.stage === "production" ? "retain" : "remove",
     };
   },
   run(ctx) {

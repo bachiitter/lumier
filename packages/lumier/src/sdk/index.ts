@@ -94,6 +94,7 @@ export type {
   ManualBinding,
   QueueOptions,
   QueueOutput,
+  RemovalPolicy,
   ResourceRegistry,
   RuntimeContext,
   StaticSiteOptions,

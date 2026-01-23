@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import * as Bun from "bun";
 import { type ConfigOptions, clearRegistry, getRegistry, type ResourceRegistry, type RuntimeContext } from "lumier";
-import path from "path";
+import * as path from "path";
 import { init } from "./commands/init.js";
 import {
   CONFIG_FILENAME,
@@ -125,7 +125,6 @@ function printHelp(): void {
 ${colors.bold}Commands:${colors.reset}
   init              Initialize a new project
   dev               Start dev server with hot reload using Miniflare
-  dev --live        Deploy and watch for changes (real Cloudflare)
   deploy            Build and deploy to Cloudflare
   deploy --preview  Preview changes without deploying
   destroy           Destroy resources
@@ -133,6 +132,16 @@ ${colors.bold}Commands:${colors.reset}
   shell             Get environment with resource IDs
   version           Show version
 `);
+}
+
+function checkStageProtection(app: { protect?: string[] }, stage: string, action: string): boolean {
+  if (!app.protect?.includes(stage)) return true;
+
+  console.error(
+    `\n${colors.red}Error:${colors.reset} Cannot ${action} the "${stage}" stage because it is protected.\n`
+  );
+  console.error(`Remove "${stage}" from ${colors.dim}protect${colors.reset} array in your config to allow this action.\n`);
+  return false;
 }
 
 async function main(args: Array<string>): Promise<void> {
@@ -176,6 +185,19 @@ async function main(args: Array<string>): Promise<void> {
           lumierDir: LUMIER_DIR,
           loadConfig: () => loadConfig(stage),
         });
+
+        break;
+      }
+      case "deploy": {
+        const config = await loadConfig(stage);
+        if (!checkStageProtection(config.app, stage, "deploy")) process.exit(1);
+
+        // Generate types before build
+        const { generateTypes } = await import("./lib/codegen.js");
+        generateTypes(config, ROOT_DIR);
+
+        const { build } = await import("./lib/build.js");
+        await build(config, { stage, rootDir: ROOT_DIR, lumierDir: LUMIER_DIR });
 
         break;
       }

@@ -12,9 +12,12 @@ export interface AppInput {
   stage?: string;
 }
 
+export type RemovalPolicy = "remove" | "retain" | "retain-all";
+
 export interface AppConfig {
   name: string;
   protect?: string[];
+  removal?: RemovalPolicy;
 }
 
 export interface RuntimeContext {

@@ -440,6 +440,7 @@ export function Secret(name: string, placeholder?: string): SecretOutput {
  *     return {
  *       name: 'my-app',
  *       protect: ['production'],
+ *       removal: input?.stage === 'production' ? 'retain' : 'remove',
  *     };
  *   },
  *   async run(ctx) {
