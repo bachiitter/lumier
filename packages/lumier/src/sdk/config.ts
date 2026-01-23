@@ -81,29 +81,43 @@ function validateName(name: string, type: string): void {
 }
 
 // ============================================================================
-// Internal Registry
+// Internal Registry (uses globalThis to share across module instances)
 // ============================================================================
 
-const registry: ResourceRegistry = {
-  app: { name: "", stage: "" },
-  workers: [],
-  buckets: [],
-  kvs: [],
-  d1s: [],
-  queues: [],
-  vectorizes: [],
-  durableObjects: [],
-  crons: [],
-  staticSites: [],
-  hyperdrives: [],
-  analyticsEngines: [],
-  outputs: {},
-};
+const REGISTRY_KEY = "__lumier_registry__";
+
+function createEmptyRegistry(): ResourceRegistry {
+  return {
+    app: { name: "", stage: "" },
+    workers: [],
+    buckets: [],
+    kvs: [],
+    d1s: [],
+    queues: [],
+    vectorizes: [],
+    durableObjects: [],
+    crons: [],
+    staticSites: [],
+    hyperdrives: [],
+    analyticsEngines: [],
+    outputs: {},
+  };
+}
+
+// Use globalThis to ensure registry is shared across all module instances
+if (!(globalThis as Record<string, unknown>)[REGISTRY_KEY]) {
+  (globalThis as Record<string, unknown>)[REGISTRY_KEY] = createEmptyRegistry();
+}
+
+function getRegistryInternal(): ResourceRegistry {
+  return (globalThis as Record<string, unknown>)[REGISTRY_KEY] as ResourceRegistry;
+}
 
 /**
  * Clear registry (for hot reload)
  */
 export function clearRegistry(): void {
+  const registry = getRegistryInternal();
   registry.app = { name: "", stage: "" };
   registry.workers = [];
   registry.buckets = [];
@@ -124,7 +138,7 @@ export function clearRegistry(): void {
  * @internal This is for CLI use only - do not use in user code
  */
 export function getRegistry(): ResourceRegistry {
-  return registry;
+  return getRegistryInternal();
 }
 
 // ============================================================================
@@ -145,6 +159,7 @@ export function getRegistry(): ResourceRegistry {
  */
 export function Worker(name: string, options: WorkerOptions): WorkerOutput {
   validateName(name, "Worker");
+  const registry = getRegistryInternal();
   registry.workers.push({ name, options });
 
   // Script name includes stage for workers.dev URL
@@ -170,7 +185,7 @@ export function Worker(name: string, options: WorkerOptions): WorkerOutput {
  */
 export function Bucket(name: string, options?: BucketOptions): BucketOutput {
   validateName(name, "Bucket");
-  registry.buckets.push({ name, options });
+  getRegistryInternal().buckets.push({ name, options });
 
   return {
     type: "bucket",
@@ -189,7 +204,7 @@ export function Bucket(name: string, options?: BucketOptions): BucketOutput {
  */
 export function KV(name: string, options?: KVOptions): KVOutput {
   validateName(name, "KV");
-  registry.kvs.push({ name, options });
+  getRegistryInternal().kvs.push({ name, options });
 
   return {
     type: "kv",
@@ -209,7 +224,7 @@ export function KV(name: string, options?: KVOptions): KVOutput {
  */
 export function D1(name: string, options?: D1Options): D1Output {
   validateName(name, "D1");
-  registry.d1s.push({ name, options });
+  getRegistryInternal().d1s.push({ name, options });
 
   return {
     type: "d1",
@@ -231,7 +246,7 @@ export function D1(name: string, options?: D1Options): D1Output {
  */
 export function Queue(name: string, options?: QueueOptions): QueueOutput {
   validateName(name, "Queue");
-  registry.queues.push({ name, options });
+  getRegistryInternal().queues.push({ name, options });
 
   return {
     type: "queue",
@@ -253,7 +268,7 @@ export function Queue(name: string, options?: QueueOptions): QueueOutput {
  */
 export function Vectorize(name: string, options: VectorizeOptions): VectorizeOutput {
   validateName(name, "Vectorize");
-  registry.vectorizes.push({ name, options });
+  getRegistryInternal().vectorizes.push({ name, options });
 
   return {
     type: "vectorize",
@@ -275,7 +290,7 @@ export function Vectorize(name: string, options: VectorizeOptions): VectorizeOut
  */
 export function DurableObject(name: string, options: DurableObjectOptions): DurableObjectOutput {
   validateName(name, "DurableObject");
-  registry.durableObjects.push({ name, options });
+  getRegistryInternal().durableObjects.push({ name, options });
 
   return {
     type: "durable_object",
@@ -298,7 +313,7 @@ export function DurableObject(name: string, options: DurableObjectOptions): Dura
  */
 export function Cron(name: string, options: CronOptions): CronOutput {
   validateName(name, "Cron");
-  registry.crons.push({ name, options });
+  getRegistryInternal().crons.push({ name, options });
 
   return {
     type: "cron",
@@ -320,6 +335,7 @@ export function Cron(name: string, options: CronOptions): CronOutput {
  */
 export function StaticSite(name: string, options: StaticSiteOptions): StaticSiteOutput {
   validateName(name, "StaticSite");
+  const registry = getRegistryInternal();
   registry.staticSites.push({ name, options });
 
   // Build site name with stage for workers.dev URL
@@ -346,7 +362,7 @@ export function StaticSite(name: string, options: StaticSiteOptions): StaticSite
  */
 export function Hyperdrive(name: string, options: HyperdriveOptions): HyperdriveOutput {
   validateName(name, "Hyperdrive");
-  registry.hyperdrives.push({ name, options });
+  getRegistryInternal().hyperdrives.push({ name, options });
 
   return {
     type: "hyperdrive",
@@ -365,7 +381,7 @@ export function Hyperdrive(name: string, options: HyperdriveOptions): Hyperdrive
  */
 export function AnalyticsEngine(name: string, options?: AnalyticsEngineOptions): AnalyticsEngineOutput {
   validateName(name, "AnalyticsEngine");
-  registry.analyticsEngines.push({ name, options });
+  getRegistryInternal().analyticsEngines.push({ name, options });
 
   return {
     type: "analytics_engine",

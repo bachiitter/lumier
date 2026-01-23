@@ -20,10 +20,10 @@
     "bin"
   ],
   "scripts": {
-    "build:cli": "bun build ./src/cli/index.ts --outfile ./bin/lumier.js --external=miniflare --external=workerd --external=rolldown --external=lumier --target bun",
+    "build:cli": "bun build ./src/cli/index.ts --outfile ./bin/lumier.js --external=miniflare --external=workerd --external=rolldown --target node",
     "build:sdk": "bun build ./src/sdk/index.ts --target node --outdir dist/",
     "build": "bun run build:sdk && bun run build:cli && tsc -p tsconfig.build.json",
-    "dev:cli": "bun build ./src/cli/index.ts --outfile ./bin/lumier.js --external=miniflare --external=workerd --external=rolldown --external=lumier --target bun --watch",
+    "dev:cli": "bun build ./src/cli/index.ts --outfile ./bin/lumier.js --external=miniflare --external=workerd --external=rolldown --target node --watch",
     "dev:sdk": "bun build ./src/sdk/index.ts --target node --outdir dist/sdk/ --watch",
     "dev:types": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
     "dev": "bun run dev:sdk & bun run dev:types & sleep 1 && bun run dev:cli",

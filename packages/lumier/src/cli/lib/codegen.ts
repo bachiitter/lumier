@@ -9,9 +9,9 @@
  */
 
 import * as crypto from "node:crypto";
-import * as fs from "node:fs";
+import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import type { BindingValue, ResourceRegistry } from "lumier";
+import type { BindingValue, ResourceRegistry } from "../../sdk/index.js";
 import { isLinkableResource } from "./utils.js";
 
 // ============================================================================
@@ -321,8 +321,8 @@ function generateReferenceContent(rootEnvPath: string, packageDir: string): stri
 // Package Discovery
 // ============================================================================
 
-function findPackageJsons(dir: string, results: string[] = []): string[] {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
+async function findPackageJsons(dir: string, results: string[] = []): Promise<string[]> {
+  const entries = await fs.readdir(dir, { withFileTypes: true });
 
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
@@ -331,7 +331,7 @@ function findPackageJsons(dir: string, results: string[] = []): string[] {
       if (entry.name === "node_modules" || entry.name.startsWith(".")) {
         continue;
       }
-      findPackageJsons(fullPath, results);
+      await findPackageJsons(fullPath, results);
     } else if (entry.name === "package.json") {
       results.push(fullPath);
     }
@@ -340,12 +340,21 @@ function findPackageJsons(dir: string, results: string[] = []): string[] {
   return results;
 }
 
-function readPackageJson(filePath: string): PackageJson | null {
+async function readPackageJson(filePath: string): Promise<PackageJson | null> {
   try {
-    const content = fs.readFileSync(filePath, "utf8");
+    const content = await fs.readFile(filePath, "utf8");
     return JSON.parse(content);
   } catch {
     return null;
+  }
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -374,11 +383,11 @@ const hashRegex = /hash: ([a-f0-9]+)/;
 /**
  * Generate lumier-env.d.ts files for type-safe `cloudflare:workers` imports.
  */
-export function generateTypes(
+export async function generateTypes(
   config: ResourceRegistry,
   rootDir: string,
   options: GenerateTypesOptions = {}
-): GenerateTypesResult {
+): Promise<GenerateTypesResult> {
   const { force = false, check = false } = options;
   const collected = collectBindings(config);
 
@@ -386,7 +395,7 @@ export function generateTypes(
     return { generated: [], skipped: [], upToDate: true };
   }
 
-  const packageJsons = findPackageJsons(rootDir);
+  const packageJsons = await findPackageJsons(rootDir);
   const rootEnvPath = path.join(rootDir, "lumier-env.d.ts");
 
   const generated: string[] = [];
@@ -394,7 +403,7 @@ export function generateTypes(
   let allUpToDate = true;
 
   for (const packageJsonPath of packageJsons) {
-    const pkg = readPackageJson(packageJsonPath);
+    const pkg = await readPackageJson(packageJsonPath);
     if (!pkg) continue;
 
     const packageDir = path.dirname(packageJsonPath);
@@ -412,8 +421,8 @@ export function generateTypes(
     }
 
     // Check if up to date
-    if (!force && fs.existsSync(envPath)) {
-      const existing = fs.readFileSync(envPath, "utf8");
+    if (!force && (await fileExists(envPath))) {
+      const existing = await fs.readFile(envPath, "utf8");
       const existingHash = existing.match(hashRegex)?.[1];
       const newHash = content.match(hashRegex)?.[1];
 
@@ -429,7 +438,7 @@ export function generateTypes(
       continue;
     }
 
-    fs.writeFileSync(envPath, content);
+    await fs.writeFile(envPath, content);
     generated.push(relPath);
   }
 
@@ -439,11 +448,11 @@ export function generateTypes(
 /**
  * Generate all types (entry point for CLI)
  */
-export function generateAll(
+export async function generateAll(
   config: ResourceRegistry,
   rootDir: string,
   _stateDir: string,
   options: GenerateTypesOptions = {}
-): GenerateTypesResult {
+): Promise<GenerateTypesResult> {
   return generateTypes(config, rootDir, options);
 }

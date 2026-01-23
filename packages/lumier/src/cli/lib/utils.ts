@@ -1,5 +1,5 @@
-import * as Bun from "bun";
-import { type BindingValue, type LinkableResource, ResourceNameSchema } from "lumier";
+import * as fs from "node:fs/promises";
+import { type BindingValue, type LinkableResource, ResourceNameSchema } from "../../sdk/index.js";
 import * as z from "zod";
 import { colors } from "./constants.js";
 
@@ -20,19 +20,23 @@ export async function ensureFileContains(
   content: string,
   createContent?: string
 ): Promise<{ exists: boolean; updated: boolean }> {
-  const file = Bun.file(filePath);
-  const exists = await file.exists();
+  let exists = true;
+  let currentContent = "";
+  try {
+    currentContent = await fs.readFile(filePath, "utf-8");
+  } catch {
+    exists = false;
+  }
 
   if (!exists) {
-    await Bun.write(filePath, createContent ?? content);
+    await fs.writeFile(filePath, createContent ?? content);
     return { exists: false, updated: true };
   }
 
-  const currentContent = await file.text();
   if (!currentContent.includes(content)) {
     // Ensure we start on a new line if the file doesn't end with one
     const prefix = currentContent.endsWith("\n") ? "" : "\n";
-    await Bun.write(filePath, `${currentContent}${prefix}${content}`);
+    await fs.writeFile(filePath, `${currentContent}${prefix}${content}`);
     return { exists: true, updated: true };
   }
 

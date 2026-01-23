@@ -1,7 +1,7 @@
-#!/usr/bin/env bun
-import * as Bun from "bun";
-import { type ConfigOptions, clearRegistry, getRegistry, type ResourceRegistry, type RuntimeContext } from "lumier";
-import * as path from "path";
+#!/usr/bin/env node
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
+import { type ConfigOptions, clearRegistry, getRegistry, type ResourceRegistry, type RuntimeContext } from "../sdk/index.js";
 import { init } from "./commands/init.js";
 import {
   CONFIG_FILENAME,
@@ -76,7 +76,9 @@ async function loadConfig(stage: string): Promise<ResourceRegistry> {
   clearRegistry();
 
   const configPath = path.join(ROOT_DIR, CONFIG_FILENAME);
-  if (!Bun.file(configPath).exists()) {
+  try {
+    await fs.access(configPath);
+  } catch {
     throw new LumierError("lumier.config.ts not found", "CONFIG_NOT_FOUND", "Run: lumier init");
   }
   const configModule = await import(configPath + `?t=${Date.now()}`);
@@ -149,7 +151,7 @@ async function main(args: Array<string>): Promise<void> {
 
   console.log(`${colors.bold}${colors.cyan}Lumier${colors.reset} - Infrastructure as Code for Cloudflare`);
 
-  verbose = Boolean(flags.verbose) || Bun.env.DEBUG === "1";
+  verbose = Boolean(flags.verbose) || process.env.DEBUG === "1";
 
   const stage = typeof flags.stage === "string" ? flags.stage : DEFAULT_STAGE;
   validateStageName(stage);
@@ -160,11 +162,13 @@ async function main(args: Array<string>): Promise<void> {
       case "--version":
       case "version": {
         const PACKAGE_JSON_PATH = path.join(ROOT_DIR, PACKAGE_JSON_FILENAME);
-        const packageJson = await Bun.file(PACKAGE_JSON_PATH)
-          .json()
-          .catch(() => ({}));
-
-        const packageVersion = packageJson?.version;
+        let packageVersion = "unknown";
+        try {
+          const content = await fs.readFile(PACKAGE_JSON_PATH, "utf-8");
+          packageVersion = JSON.parse(content)?.version ?? "unknown";
+        } catch {
+          // ignore
+        }
 
         console.log(`lumier v${packageVersion}`);
         break;
@@ -194,7 +198,7 @@ async function main(args: Array<string>): Promise<void> {
 
         // Generate types before build
         const { generateTypes } = await import("./lib/codegen.js");
-        generateTypes(config, ROOT_DIR);
+        await generateTypes(config, ROOT_DIR);
 
         const { build } = await import("./lib/build.js");
         await build(config, { stage, rootDir: ROOT_DIR, lumierDir: LUMIER_DIR });

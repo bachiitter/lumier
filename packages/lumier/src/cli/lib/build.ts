@@ -2,10 +2,9 @@
  * Build Workers using Rolldown
  */
 
-import * as fs from "node:fs";
-import { mkdir } from "node:fs/promises";
+import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import type { ResourceRegistry } from "lumier";
+import type { ResourceRegistry } from "../../sdk/index.js";
 import { rolldown } from "rolldown";
 import { cloudflare, env, nodeless } from "unenv";
 import type { BuildManifest } from "./types.js";
@@ -28,7 +27,7 @@ export async function build(config: ResourceRegistry, options: BuildContext): Pr
   const isProd = options.minify ?? stage === "production";
   const buildDir = path.join(lumierDir, "build");
 
-  await mkdir(buildDir, { recursive: true });
+  await fs.mkdir(buildDir, { recursive: true });
 
   const manifest: BuildManifest = {
     timestamp: new Date().toISOString(),
@@ -42,7 +41,7 @@ export async function build(config: ResourceRegistry, options: BuildContext): Pr
     if (!silent) log(`->  ${name}`, `Building ${workerOpts.entry}...`);
 
     const workerDir = path.join(buildDir, name);
-    await mkdir(workerDir, { recursive: true });
+    await fs.mkdir(workerDir, { recursive: true });
     const outfile = path.join(workerDir, `${name}.js`);
 
     try {
@@ -91,9 +90,10 @@ export async function build(config: ResourceRegistry, options: BuildContext): Pr
 
       await bundle.close();
 
-      const bundleSize = fs.statSync(outfile).size;
+      const stat = await fs.stat(outfile);
+      const bundleSize = stat.size;
 
-      const bundledCode = fs.readFileSync(outfile, "utf-8");
+      const bundledCode = await fs.readFile(outfile, "utf-8");
       const configuredBindings = new Set(Object.keys(workerOpts.bindings ?? {}));
       const usedBindings = new Set<string>();
 
@@ -125,6 +125,6 @@ export async function build(config: ResourceRegistry, options: BuildContext): Pr
     }
   }
 
-  fs.writeFileSync(path.join(buildDir, "build-manifest.json"), JSON.stringify(manifest, null, 2));
+  await fs.writeFile(path.join(buildDir, "build-manifest.json"), JSON.stringify(manifest, null, 2));
   return manifest;
 }

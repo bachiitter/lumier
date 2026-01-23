@@ -1,7 +1,6 @@
-import { mkdir } from "node:fs/promises";
-import path from "node:path";
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
 import * as readline from "node:readline";
-import * as Bun from "bun";
 import {
   CONFIG_FILENAME,
   colors,
@@ -34,22 +33,42 @@ function confirm(message: string): Promise<boolean> {
   });
 }
 
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function readFileOrEmpty(filePath: string): Promise<string> {
+  try {
+    return await fs.readFile(filePath, "utf-8");
+  } catch {
+    return "";
+  }
+}
+
 export async function init(): Promise<void> {
-  const [configExists, lumierDirExists, gitignoreContent, packageJson, workerExists] = await Promise.all([
-    Bun.file(CONFIG_PATH).exists(),
-    Bun.file(LUMIER_DIR).exists(),
-    Bun.file(GITIGNORE_PATH)
-      .exists()
-      .then((exists) => (exists ? Bun.file(GITIGNORE_PATH).text() : "")),
-    Bun.file(PACKAGE_JSON_PATH)
-      .json()
-      .catch(() => ({})),
-    Bun.file(WORKER_PATH).exists(),
+  const [configExists, lumierDirExists, gitignoreContent, packageJsonContent, workerExists] = await Promise.all([
+    fileExists(CONFIG_PATH),
+    fileExists(LUMIER_DIR),
+    readFileOrEmpty(GITIGNORE_PATH),
+    readFileOrEmpty(PACKAGE_JSON_PATH),
+    fileExists(WORKER_PATH),
   ]);
 
-  const appName = packageJson?.name || "my-app";
-  const gitignoreNeedsUpdate = !gitignoreContent.includes(STATE_DIR_NAME);
   const gitignoreExists = gitignoreContent.length > 0;
+  let packageJson: Record<string, unknown> = {};
+  try {
+    packageJson = JSON.parse(packageJsonContent);
+  } catch {
+    // ignore
+  }
+
+  const appName = (packageJson?.name as string) || "my-app";
+  const gitignoreNeedsUpdate = !gitignoreContent.includes(STATE_DIR_NAME);
 
   // Check if already initialized
   if (configExists && lumierDirExists && !gitignoreNeedsUpdate && workerExists) {
@@ -113,12 +132,12 @@ export async function init(): Promise<void> {
 
   // Run tasks
   if (!configExists) {
-    await Bun.write(CONFIG_PATH, CONFIG_TEMPLATE(appName));
+    await fs.writeFile(CONFIG_PATH, CONFIG_TEMPLATE(appName));
     console.log(`  ${colors.green}+${colors.reset} Created ${CONFIG_FILENAME}`);
   }
 
   if (!lumierDirExists) {
-    await mkdir(LUMIER_DIR, { recursive: true });
+    await fs.mkdir(LUMIER_DIR, { recursive: true });
     console.log(`  ${colors.green}+${colors.reset} Created ${STATE_DIR_NAME}/`);
   }
 
@@ -132,8 +151,8 @@ export async function init(): Promise<void> {
   }
 
   if (!workerExists) {
-    await mkdir(SRC_PATH, { recursive: true });
-    await Bun.write(WORKER_PATH, WORKER_TEMPLATE);
+    await fs.mkdir(SRC_PATH, { recursive: true });
+    await fs.writeFile(WORKER_PATH, WORKER_TEMPLATE);
     console.log(`  ${colors.green}+${colors.reset} Created src/index.ts`);
   }
 
