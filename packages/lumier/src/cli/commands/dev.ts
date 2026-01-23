@@ -2,11 +2,11 @@
  * Development Server using Miniflare
  */
 
-import { mkdir } from "node:fs/promises";
+import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import type { Readable } from "node:stream";
 import * as chokidar from "chokidar";
-import type { ResourceRegistry, WorkerOptions } from "lumier";
+import type { ResourceRegistry, WorkerOptions } from "../../sdk/index.js";
 import { Log, LogLevel, Miniflare, type MiniflareOptions } from "miniflare";
 import { build } from "../lib/build.js";
 import { generateAll } from "../lib/codegen.js";
@@ -189,7 +189,7 @@ export async function dev(options: DevOptions): Promise<void> {
 
   const persistDir = path.join(lumierDir, "persist");
   const buildDir = path.join(lumierDir, "build");
-  await mkdir(persistDir, { recursive: true });
+  await fs.mkdir(persistDir, { recursive: true });
 
   // Build and generate
   try {
@@ -201,7 +201,7 @@ export async function dev(options: DevOptions): Promise<void> {
       throw err;
     }
   }
-  generateAll(config, rootDir, lumierDir);
+  await generateAll(config, rootDir, lumierDir);
 
   const workers = options.worker ? config.workers.filter((w) => w.name === options.worker) : config.workers;
   const basePort = options.port ?? DEFAULT_DEV_PORT;
@@ -304,7 +304,7 @@ export async function dev(options: DevOptions): Promise<void> {
 
     try {
       config = await loadConfig();
-      const result = generateAll(config, rootDir, lumierDir, { force: true });
+      const result = await generateAll(config, rootDir, lumierDir, { force: true });
 
       if (result.generated.length > 0) {
         log("+ types", result.generated.join(", "));
