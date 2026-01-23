@@ -65,7 +65,7 @@ function RouteComponent() {
             On this page
           </h2>
           <nav>
-            <ol className="flex flex-col gap-2">
+            <ol className="flex flex-col gap-1">
               {loaderData.toc
                 .filter((item) => item.depth > 1)
                 .map((item) => (

@@ -1,8 +1,14 @@
+import { createCodePlugin } from "@streamdown/code";
+import { mermaid } from "@streamdown/mermaid";
 import { Kbd, KbdGroup } from "orphos/kbd";
 import { typographyVariants } from "orphos/typography";
 import { cn } from "orphos/utils";
 import rehypeSlug from "rehype-slug";
 import { Streamdown } from "streamdown";
+
+const code = createCodePlugin({
+  themes: ["vitesse-light", "vitesse-dark"], // [light, dark]
+});
 
 export function RenderMarkdown({ content }: { content: string }) {
   return (
@@ -194,13 +200,13 @@ export function RenderMarkdown({ content }: { content: string }) {
         table: false,
       }}
       mode="static"
+      plugins={{ code, mermaid }}
       rehypePlugins={[rehypeSlug]}
       remarkRehypeOptions={{
         footnoteLabel: "Footnotes",
         footnoteBackLabel: "Back to content",
         footnoteBackContent: "↩",
       }}
-      shikiTheme={["github-light", "github-dark"]}
     >
       {content}
     </Streamdown>

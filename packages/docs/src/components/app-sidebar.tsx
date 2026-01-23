@@ -67,6 +67,7 @@ export function AppSidebar({ meta, ...props }: AppSidebarProps) {
                     return item.pages.map((page) => (
                       <SidebarMenuItem key={page}>
                         <SidebarMenuButton
+                          className="font-medium"
                           render={
                             <Link
                               activeOptions={{ exact: true }}
@@ -86,6 +87,7 @@ export function AppSidebar({ meta, ...props }: AppSidebarProps) {
                     return (
                       <SidebarMenuItem key={item.page}>
                         <SidebarMenuButton
+                          className="font-medium"
                           render={
                             <Link
                               activeOptions={{ exact: true }}
@@ -104,6 +106,7 @@ export function AppSidebar({ meta, ...props }: AppSidebarProps) {
                   return (
                     <SidebarMenuItem key={item.label}>
                       <SidebarMenuButton
+                        className="font-medium"
                         render={
                           item.external ? (
                             <a href={item.href} rel="noreferrer" target="_blank">
