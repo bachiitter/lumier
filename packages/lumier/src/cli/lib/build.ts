@@ -4,9 +4,9 @@
 
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import type { ResourceRegistry } from "../../sdk/index.js";
 import { rolldown } from "rolldown";
 import { cloudflare, env, nodeless } from "unenv";
+import type { ResourceRegistry } from "../../sdk/index.js";
 import type { BuildManifest } from "./types.js";
 import { formatBytes, LumierError, log } from "./utils.js";
 

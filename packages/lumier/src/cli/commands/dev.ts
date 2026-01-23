@@ -137,6 +137,10 @@ function processLinkableBinding(
     const connString = _ref?.localConnectionString as string | undefined;
     if (connString) {
       collections.hyperdrives[key] = { connectionString: connString };
+    } else {
+      console.warn(
+        `${colors.yellow}Warning: Hyperdrive binding "${key}" missing localConnectionString - binding skipped in dev${colors.reset}`
+      );
     }
   }
 }

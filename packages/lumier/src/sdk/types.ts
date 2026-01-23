@@ -428,10 +428,7 @@ export interface StaticSiteOptions {
 
 /** Hyperdrive configuration */
 export interface HyperdriveOptions {
-  /** PostgreSQL connection string (for production/Cloudflare) */
-  connectionString: string;
-
-  /** Local connection string for dev server (bypasses Hyperdrive, connects directly) */
+  /** Local connection string for dev server (connects directly, bypasses Hyperdrive) */
   localConnectionString?: string;
 
   /** Caching configuration */
@@ -475,7 +472,7 @@ export interface ResourceRegistry {
   durableObjects: Array<{ name: string; options: DurableObjectOptions }>;
   crons: Array<{ name: string; options: CronOptions }>;
   staticSites: Array<{ name: string; options: StaticSiteOptions }>;
-  hyperdrives: Array<{ name: string; options: HyperdriveOptions }>;
+  hyperdrives: Array<{ name: string; options?: HyperdriveOptions }>;
   analyticsEngines: Array<{ name: string; options?: AnalyticsEngineOptions }>;
   outputs: Record<string, unknown>;
 }
