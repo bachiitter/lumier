@@ -157,6 +157,7 @@ function buildMiniflareConfig(
     kvPersist: path.join(persistDir, "kv"),
     r2Persist: path.join(persistDir, "r2"),
     d1Persist: path.join(persistDir, "d1"),
+    durableObjectsPersist: path.join(persistDir, "do"),
   };
 
   miniflareConfig.handleRuntimeStdio = (_stdout: Readable, stderr: Readable) => {
