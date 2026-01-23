@@ -137,7 +137,7 @@ function buildMiniflareConfig(
   }
 
   const miniflareConfig: MiniflareOptions = {
-    log: new Log(LogLevel.WARN),
+    log: new Log(LogLevel.INFO),
     verbose: false,
     port,
     workers: [
@@ -159,18 +159,12 @@ function buildMiniflareConfig(
     d1Persist: path.join(persistDir, "d1"),
   };
 
-  miniflareConfig.handleRuntimeStdio = (stdout: Readable, stderr: Readable) => {
-    // Filter favicon requests from stdout
-    stdout.on("data", (chunk: Buffer) => {
-      const text = chunk.toString();
-      if (!text.includes("/favicon.ico")) {
-        process.stdout.write(chunk);
-      }
-    });
-    // Filter workerd internal errors (broken pipe on reload)
+  miniflareConfig.handleRuntimeStdio = (_stdout: Readable, stderr: Readable) => {
+    // Filter workerd internal errors (broken pipe on reload) and ready messages
     stderr.on("data", (chunk: Buffer) => {
       const text = chunk.toString();
-      if (!(text.includes("workerd/") || text.includes("Broken pipe"))) {
+      const shouldSkip = text.includes("workerd/") || text.includes("Broken pipe");
+      if (!shouldSkip) {
         process.stderr.write(chunk);
       }
     });
