@@ -84,6 +84,7 @@ export type {
   CronOutput,
   D1Options,
   D1Output,
+  DurableObjectMigration,
   DurableObjectOptions,
   DurableObjectOutput,
   HyperdriveOptions,

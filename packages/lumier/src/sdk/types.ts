@@ -364,6 +364,27 @@ export interface VectorizeOptions {
   };
 }
 
+/** Durable Object migration entry */
+export interface DurableObjectMigration {
+  /** Migration tag (version identifier) */
+  tag: string;
+
+  /** This is a new class being added */
+  newClass?: boolean;
+
+  /** Class was renamed from this name (preserves data) */
+  renamedFrom?: string;
+
+  /** Class is being deleted */
+  deletedClass?: boolean;
+
+  /** Class is being transferred from another script */
+  transferredFrom?: {
+    fromScript: string;
+    fromClass: string;
+  };
+}
+
 /** Durable Object configuration */
 export interface DurableObjectOptions {
   /** Worker containing the Durable Object class */
@@ -374,6 +395,9 @@ export interface DurableObjectOptions {
 
   /** Use SQLite storage (vs KV storage) @default true */
   sqlite?: boolean;
+
+  /** Migrations for this Durable Object */
+  migrations?: DurableObjectMigration[];
 }
 
 // ============================================================================
