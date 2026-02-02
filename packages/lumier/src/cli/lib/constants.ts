@@ -1,5 +1,8 @@
 import { userInfo } from "node:os";
 
+/** Lumier R2 Bucket name - state store */
+export const STATE_BUCKET_NAME = "lumier-state-store";
+
 /** Default stage name - uses the current OS username */
 export const DEFAULT_STAGE = userInfo().username;
 

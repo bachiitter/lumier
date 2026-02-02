@@ -146,6 +146,74 @@ export class ChatRoom extends DurableObject {
 }
 ```
 
+## Migrations
+
+Durable Objects require migrations when adding, renaming, deleting, or transferring classes:
+
+```ts
+DurableObject("counter", {
+  worker: api,
+  className: "Counter",
+  migrations: [
+    { tag: "v1", newClass: true },
+  ],
+});
+```
+
+### Renaming a Class
+
+```ts
+DurableObject("counter", {
+  worker: api,
+  className: "CounterV2",
+  migrations: [
+    { tag: "v1", newClass: true },
+    { tag: "v2", renamedFrom: "Counter" },
+  ],
+});
+```
+
+### Deleting a Class
+
+```ts
+DurableObject("old-counter", {
+  worker: api,
+  className: "OldCounter",
+  migrations: [
+    { tag: "v1", newClass: true },
+    { tag: "v2", deletedClass: true },
+  ],
+});
+```
+
+### Transferring from Another Script
+
+```ts
+DurableObject("counter", {
+  worker: api,
+  className: "Counter",
+  migrations: [
+    {
+      tag: "v1",
+      transferredFrom: {
+        fromScript: "old-worker",
+        fromClass: "Counter",
+      },
+    },
+  ],
+});
+```
+
+### Migration Options
+
+| Option            | Type      | Description                              |
+| ----------------- | --------- | ---------------------------------------- |
+| `tag`             | `string`  | Version identifier for this migration    |
+| `newClass`        | `boolean` | Class is being added                     |
+| `renamedFrom`     | `string`  | Previous class name (preserves data)     |
+| `deletedClass`    | `boolean` | Class is being removed                   |
+| `transferredFrom` | `object`  | Transfer from another script             |
+
 ## Output
 
 ```ts

@@ -57,7 +57,7 @@ export { ResourceNameSchema };
 /**
  * Check if a binding value is a linkable resource (KV, D1, R2, etc.)
  */
-export function isLinkableResource(value: BindingValue): value is LinkableResource {
+export function isLinkableResource(value: unknown): value is LinkableResource {
   return typeof value === "object" && value !== null && "type" in value && "_ref" in value;
 }
 

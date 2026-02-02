@@ -1,3 +1,5 @@
+"use client";
+
 import { createCodePlugin } from "@streamdown/code";
 import { mermaid } from "@streamdown/mermaid";
 import { Kbd, KbdGroup } from "orphos/kbd";

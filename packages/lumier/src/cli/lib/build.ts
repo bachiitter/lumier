@@ -7,6 +7,7 @@ import * as path from "node:path";
 import { rolldown } from "rolldown";
 import { cloudflare, env, nodeless } from "unenv";
 import type { ResourceRegistry } from "../../sdk/index.js";
+import { DEFAULT_RESOLVE_CONDITIONS } from "./constants.js";
 import type { BuildManifest } from "./types.js";
 import { formatBytes, LumierError, log } from "./utils.js";
 
@@ -46,7 +47,7 @@ export async function build(config: ResourceRegistry, options: BuildContext): Pr
 
     try {
       const buildOpts = workerOpts.build ?? {};
-      const conditions = buildOpts.conditions ?? ["workerd", "worker", "browser", "import", "default"];
+      const conditions = buildOpts.conditions ?? DEFAULT_RESOLVE_CONDITIONS;
 
       const hasNodeCompat = workerOpts.compatibilityFlags?.includes("nodejs_compat") ?? false;
       const nodePolyfills = hasNodeCompat ? env(nodeless, cloudflare, {}) : null;

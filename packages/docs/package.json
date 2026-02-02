@@ -3,39 +3,33 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite dev --port 3000",
-    "build": "vite build",
-    "start": "pnpx srvx --prod -s ../client dist/server/server.js",
-    "deploy": "npm run build && wrangler deploy"
+    "dev": "next dev --turbopack --port 3000",
+    "build": "next build",
+    "start": "next start"
   },
   "dependencies": {
-    "@cloudflare/vite-plugin": "^1.21.2",
     "@content-collections/core": "^0.13.1",
-    "@content-collections/vite": "^0.2.8",
+    "@content-collections/next": "^0.2.10",
     "@streamdown/code": "^1.0.1",
     "@streamdown/mermaid": "^1.0.1",
     "@tabler/icons-react": "^3.36.1",
-    "@tailwindcss/vite": "^4.1.18",
-    "@tanstack/react-router": "^1.154.12",
-    "@tanstack/react-start": "^1.154.12",
-    "@tanstack/router-plugin": "^1.154.12",
     "better-themes": "^1.1.0",
-    "fumadocs-core": "^16.4.7",
+    "fumadocs-core": "^16.4.11",
+    "next": "^16.1.6",
     "orphos": "^0.50.1",
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "rehype-slug": "^6.0.0",
     "streamdown": "^2.1.0",
-    "tailwindcss": "^4.1.18",
-    "vite-tsconfig-paths": "^6.0.4",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.3.11",
-    "@types/react": "^19.2.9",
+    "@biomejs/biome": "2.3.13",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@types/node": "25.1.0",
+    "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.2",
-    "typescript": "^5.9.3",
-    "vite": "^7.3.1"
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3"
   }
 }

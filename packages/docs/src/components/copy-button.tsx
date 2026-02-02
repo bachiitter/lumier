@@ -1,3 +1,5 @@
+"use client";
+
 import { IconCheck, IconCopy } from "@tabler/icons-react";
 import { Button } from "orphos/button";
 import * as React from "react";

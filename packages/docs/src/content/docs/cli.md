@@ -34,8 +34,38 @@ Options:
 The dev server uses Miniflare to emulate Cloudflare Workers locally with:
 
 - Hot reload on file changes
-- Local KV, D1, R2 persistence in `.lumier/persist/`
+- Local KV, D1, R2, Durable Objects persistence in `.lumier/persist/`
 - Automatic type generation
+- Service bindings between workers
+- Queue producers and consumers
+- Cron/scheduled event triggers
+- Hyperdrive (via `localConnectionString`)
+
+#### Multi-Worker Support
+
+Each worker runs on its own port starting from the base port:
+
+```bash
++ api       http://localhost:8787
++ webhook   http://localhost:8788
+```
+
+#### Cron Triggers
+
+Crons are automatically triggered based on schedule. For manual testing:
+
+```bash
+curl "http://localhost:8787/cdn-cgi/mf/scheduled"
+```
+
+#### Limitations
+
+Some bindings are not available in local dev:
+
+- AI bindings (no local emulation)
+- Vectorize (no local emulation)
+- Analytics Engine (no local emulation)
+- Cross-worker Durable Objects (DOs work within the same worker)
 
 ### `deploy`
 

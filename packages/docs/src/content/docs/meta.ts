@@ -23,7 +23,7 @@ export type MetaConfig = Array<MetaItem>;
 export const META: MetaConfig = [
   {
     label: "Introduction",
-    page: "",
+    page: "intro",
   },
   {
     title: "Getting Started",
