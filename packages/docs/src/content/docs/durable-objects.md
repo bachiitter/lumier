@@ -3,7 +3,7 @@ title: Durable Objects
 description: Cloudflare Durable Objects for stateful coordination
 ---
 
-Durable Objects provide strongly consistent, stateful coordination.
+Durable Objects provide strongly consistent, stateful coordination. They’re a good fit for things like counters, rate limiters, collaborative sessions, presence, and WebSocket hubs.
 
 ## Basic Usage
 
@@ -15,18 +15,19 @@ export default $config({
     return { name: "my-app", protect: ["production"] };
   },
   run() {
-    const api = Worker("api", {
-      entry: "src/index.ts",
+    // A worker script that contains the Durable Object class
+    const objects = Worker("objects", {
+      entry: "src/objects.ts",
     });
 
     const counter = DurableObject("counter", {
-      worker: api,
+      worker: objects,
       className: "Counter",
     });
 
-    // Add DO binding to worker
+    // Another worker binds the namespace and calls it
     Worker("api", {
-      entry: "src/index.ts",
+      entry: "src/api.ts",
       bindings: {
         COUNTER: counter,
       },
@@ -39,7 +40,7 @@ export default $config({
 
 ```ts
 DurableObject("counter", {
-  worker: api,           // Worker containing the DO class
+  worker: objects,       // Worker containing the DO class
   className: "Counter",  // Class name in the worker
   sqlite: true,          // Use SQLite storage (default: true)
 });
@@ -54,7 +55,7 @@ DurableObject("counter", {
 ## Worker Code
 
 ```ts
-// src/index.ts
+// src/objects.ts
 import { env, DurableObject } from "cloudflare:workers";
 
 export class Counter extends DurableObject {
@@ -69,6 +70,11 @@ export class Counter extends DurableObject {
     return (await this.ctx.storage.get<number>("count")) || 0;
   }
 }
+```
+
+```ts
+// src/api.ts
+import { env } from "cloudflare:workers";
 
 export default {
   async fetch(request: Request): Promise<Response> {
@@ -223,3 +229,8 @@ interface DurableObjectOutput {
   className: string;
 }
 ```
+
+## Next Steps
+
+- [Worker](/docs/worker) — Binding Durable Objects to Workers
+- [Queue](/docs/queue) — Offloading async work

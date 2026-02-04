@@ -3,18 +3,18 @@ title: Drizzle ORM
 description: Use Drizzle ORM with D1 and Hyperdrive
 ---
 
-Drizzle is a TypeScript ORM that works great with Cloudflare D1 and Hyperdrive.
+Drizzle is a TypeScript ORM that works well with Cloudflare D1 (SQLite) and Hyperdrive (Postgres connection pooling). This page shows the common wiring patterns in Lumier.
 
 ## D1 with Drizzle
 
-### Setup
+### Install
 
 ```bash
-npm install drizzle-orm
-npm install -D drizzle-kit
+bun add drizzle-orm
+bun add -d drizzle-kit
 ```
 
-### Schema
+### Define a Schema
 
 ```ts
 // src/db/schema.ts
@@ -35,7 +35,7 @@ export const posts = sqliteTable("posts", {
 });
 ```
 
-### Config
+### Bind D1 in Lumier
 
 ```ts
 // lumier.config.ts
@@ -58,7 +58,7 @@ export default $config({
 });
 ```
 
-### Worker Code
+### Use Drizzle in a Worker
 
 ```ts
 // src/index.ts
@@ -104,7 +104,9 @@ export default {
 };
 ```
 
-### Migrations
+### Migrations (D1)
+
+Drizzle generates SQL migrations. Apply them to D1 with Wrangler:
 
 ```ts
 // drizzle.config.ts
@@ -119,21 +121,21 @@ export default defineConfig({
 
 ```bash
 # Generate migrations
-npx drizzle-kit generate
+bunx drizzle-kit generate
 
-# Apply with wrangler
-npx wrangler d1 migrations apply database --local
+# Apply migrations to D1
+bunx wrangler d1 migrations apply database
 ```
 
 ## Hyperdrive with Drizzle
 
-### Setup
+### Install
 
 ```bash
-npm install drizzle-orm postgres
+bun add drizzle-orm postgres
 ```
 
-### Schema
+### Define a Postgres Schema
 
 ```ts
 // src/db/schema.ts
@@ -147,7 +149,7 @@ export const users = pgTable("users", {
 });
 ```
 
-### Config
+### Bind Hyperdrive in Lumier
 
 ```ts
 // lumier.config.ts
@@ -157,9 +159,10 @@ export default $config({
   app() {
     return { name: "my-app", protect: ["production"] };
   },
-  run(ctx) {
+  run() {
     const pg = Hyperdrive("postgres", {
-      connectionString: process.env.DATABASE_URL!,
+      // Optional: for local dev servers
+      localConnectionString: "postgres://localhost:5432/mydb",
     });
 
     Worker("api", {
@@ -172,7 +175,7 @@ export default $config({
 });
 ```
 
-### Worker Code
+### Use Drizzle + postgres-js
 
 ```ts
 // src/index.ts
@@ -219,3 +222,8 @@ const usersWithPosts = await db.query.users.findMany({
   },
 });
 ```
+
+## Next Steps
+
+- [D1](/docs/d1) — D1 usage patterns
+- [Hyperdrive](/docs/hyperdrive) — Hyperdrive configuration

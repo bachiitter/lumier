@@ -3,7 +3,12 @@ title: Queue
 description: Cloudflare Queues for async message processing
 ---
 
-Queues enable reliable, asynchronous message processing.
+Queues enable reliable, asynchronous message processing. Use them to move work out of request/response paths: emails, webhooks, background jobs, and fanout pipelines.
+
+A queue setup usually has:
+
+- A **producer** Worker that sends messages
+- A **consumer** Worker that processes batches of messages
 
 ## Basic Usage
 
@@ -39,6 +44,11 @@ export default $config({
   },
 });
 ```
+
+## Producer vs Consumer
+
+- Producers call `send`/`sendBatch`.
+- Consumers implement a `queue(batch)` handler and must `ack()` or `retry()` messages.
 
 ## Options
 
@@ -140,6 +150,12 @@ export default {
 };
 ```
 
+## Operational Notes
+
+- Make consumers idempotent: retries can deliver the same message more than once.
+- Prefer small payloads; store large data in R2 and send a pointer (key/id) through the queue.
+- Use a dead-letter queue for messages that repeatedly fail.
+
 ## Output
 
 ```ts
@@ -148,3 +164,8 @@ interface QueueOutput {
   name: string;
 }
 ```
+
+## Next Steps
+
+- [Worker](/docs/worker) — Binding queues to Workers
+- [Bucket (R2)](/docs/bucket) — Large payloads and attachments

@@ -3,6 +3,24 @@ title: CLI
 description: Lumier command-line interface
 ---
 
+Lumier’s CLI is designed to be small and stage-aware. Most commands accept `--stage`, letting you target isolated environments (for example: `dev`, `staging`, `production`) without duplicating config files.
+
+## Global Flags
+
+| Flag | Description |
+| --- | --- |
+| `--stage <name>` | Target stage (default: your OS username) |
+| `--verbose` | Verbose logs |
+
+## Environment Variables
+
+Commands that interact with Cloudflare require:
+
+| Variable | Description |
+| --- | --- |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID |
+| `CLOUDFLARE_API_TOKEN` | API token for Cloudflare’s API |
+
 ## Commands
 
 ### `init`
@@ -17,10 +35,16 @@ Creates `lumier.config.ts`, `.lumier/` directory, and `src/index.ts`.
 
 ### `dev`
 
-Start the local development server:
+Run a development stage:
 
 ```bash
 bunx lumier dev
+```
+
+Typical usage:
+
+```bash
+bunx lumier dev --stage dev
 ```
 
 Options:
@@ -28,48 +52,13 @@ Options:
 | Flag              | Description                          |
 | ----------------- | ------------------------------------ |
 | `--stage <name>`  | Stage name (default: OS username)    |
-| `--port <number>` | Dev server port (default: 8787)      |
 | `--verbose`       | Enable verbose logging               |
 
-The dev server uses Miniflare to emulate Cloudflare Workers locally with:
-
-- Hot reload on file changes
-- Local KV, D1, R2, Durable Objects persistence in `.lumier/persist/`
-- Automatic type generation
-- Service bindings between workers
-- Queue producers and consumers
-- Cron/scheduled event triggers
-- Hyperdrive (via `localConnectionString`)
-
-#### Multi-Worker Support
-
-Each worker runs on its own port starting from the base port:
-
-```bash
-+ api       http://localhost:8787
-+ webhook   http://localhost:8788
-```
-
-#### Cron Triggers
-
-Crons are automatically triggered based on schedule. For manual testing:
-
-```bash
-curl "http://localhost:8787/cdn-cgi/mf/scheduled"
-```
-
-#### Limitations
-
-Some bindings are not available in local dev:
-
-- AI bindings (no local emulation)
-- Vectorize (no local emulation)
-- Analytics Engine (no local emulation)
-- Cross-worker Durable Objects (DOs work within the same worker)
+The dev command is meant to keep your iteration loop tight while staying stage-aware. In practice, you’ll typically run a `dev` stage, then deploy to `production` when ready.
 
 ### `deploy`
 
-Deploy to Cloudflare:
+Build and deploy to Cloudflare:
 
 ```bash
 bunx lumier deploy
@@ -81,6 +70,13 @@ Options:
 | ----------------- | ------------------------------------ |
 | `--stage <name>`  | Stage to deploy (default: OS username) |
 | `--preview`       | Preview changes without deploying    |
+
+Example:
+
+```bash
+bunx lumier deploy --stage production --preview
+bunx lumier deploy --stage production
+```
 
 ### `destroy`
 
@@ -105,6 +101,12 @@ bunx lumier secret list
 bunx lumier secret remove API_KEY
 ```
 
+Secrets are stage-scoped. Set the stage with `--stage` when needed:
+
+```bash
+bunx lumier secret set API_KEY --stage production
+```
+
 ### `version`
 
 Show the Lumier version:
@@ -113,12 +115,6 @@ Show the Lumier version:
 bunx lumier version
 ```
 
-## Environment Variables
-
-| Variable | Description               |
-| -------- | ------------------------- |
-| `DEBUG`  | Set to `1` for debug logs |
-
 ## Project Files
 
 | Path               | Description                    |
@@ -126,5 +122,4 @@ bunx lumier version
 | `lumier.config.ts` | Infrastructure configuration   |
 | `.lumier/`         | Local state directory          |
 | `.lumier/build/`   | Compiled worker bundles        |
-| `.lumier/persist/` | Local dev data (KV, D1, R2)    |
 | `lumier-env.d.ts`  | Generated environment types    |

@@ -3,7 +3,13 @@ title: Bucket (R2)
 description: Cloudflare R2 object storage
 ---
 
-R2 is S3-compatible object storage with zero egress fees.
+R2 is Cloudflare’s object storage. It’s S3-compatible and designed for large blobs: uploads, images, backups, and static assets.
+
+Use R2 when you want:
+
+- Durable blob storage
+- Streaming uploads/downloads from Workers
+- Simple prefix-based listing
 
 ## Basic Usage
 
@@ -62,6 +68,12 @@ const uploads = Bucket.existing("uploads", {
   bucketName: "my-existing-bucket",
 });
 ```
+
+## Common Patterns
+
+- Use a stable key scheme: `user/{id}/avatar.png`, `docs/{slug}.md`, `backups/{date}.zip`
+- Store metadata in headers (content-type, cache-control) and/or in D1 alongside the object key
+- Use prefixes for listing (“folders”)
 
 ## Worker Code
 
@@ -131,3 +143,8 @@ interface BucketOutput {
   name: string;
 }
 ```
+
+## Next Steps
+
+- [Worker](/docs/worker) — Binding resources to Workers
+- [D1](/docs/d1) — Storing object metadata relationally

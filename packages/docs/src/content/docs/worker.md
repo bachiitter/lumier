@@ -3,7 +3,7 @@ title: Worker
 description: Create and configure Cloudflare Workers
 ---
 
-Workers are the compute primitive in Cloudflare. Use the `Worker` function to define them.
+Workers are the compute primitive on Cloudflare. In Lumier, you use the `Worker()` function to define a Worker script, attach bindings, and optionally expose a URL.
 
 ## Basic Usage
 
@@ -14,16 +14,23 @@ export default $config({
   app() {
     return { name: "my-app", protect: ["production"] };
   },
-  run() {
+  run(ctx) {
     const api = Worker("api", {
       entry: "src/index.ts",
       url: true,
+      bindings: {
+        STAGE: ctx.stage,
+      },
     });
 
     return { url: api.url };
   },
 });
 ```
+
+## Naming and Stages
+
+Workers are named using your `app().name`, the current `--stage`, and the Worker name you pass to `Worker("...")`. This keeps environments isolated and makes it obvious which stage a Worker belongs to.
 
 ## Options
 
@@ -40,6 +47,11 @@ export default $config({
 | `observability`     | `object`            | Logging and tracing config                     |
 | `placement`         | `{ mode }`          | Placement mode (`smart` or `off`)              |
 | `logpush`           | `boolean`           | Enable logpush                                 |
+
+### URLs
+
+- Set `url: true` to expose the `workers.dev` URL and have Lumier return it as `worker.url`.
+- Set `domain` when you want the Worker reachable at a custom hostname.
 
 ## Bindings
 
@@ -64,6 +76,21 @@ const api = Worker("api", {
 
     // Special bindings
     AI: { type: "ai" },
+  },
+});
+```
+
+### Service Bindings (Multi-Worker)
+
+When you build multiple Workers, you can bind one Worker to another (service binding) so they can call each other without leaving Cloudflare:
+
+```ts
+const api = Worker("api", { entry: "src/api.ts" });
+
+const web = Worker("web", {
+  entry: "src/web.ts",
+  bindings: {
+    API: api,
   },
 });
 ```
@@ -108,6 +135,11 @@ Worker("web", {
   },
 });
 ```
+
+This is useful for:
+
+- Static sites and SPA builds
+- Framework adapters that emit an assets directory alongside a Worker entry
 
 ## Observability
 
@@ -155,3 +187,8 @@ export default {
   },
 };
 ```
+
+## Next Steps
+
+- [Configuration](/docs/config) — Binding types and stage patterns
+- [D1](/docs/d1), [KV](/docs/kv), [Bucket (R2)](/docs/bucket) — Storage resources

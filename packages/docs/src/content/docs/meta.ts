@@ -22,7 +22,7 @@ export type MetaConfig = Array<MetaItem>;
 
 export const META: MetaConfig = [
   {
-    label: "Introduction",
+    label: "What is Lumier?",
     page: "intro",
   },
   {
@@ -31,7 +31,7 @@ export const META: MetaConfig = [
   },
   {
     title: "Resources",
-    pages: ["worker", "d1", "kv", "bucket", "queue", "vectorize", "durable-objects", "hyperdrive"],
+    pages: ["worker", "d1", "kv", "bucket", "queue", "vectorize", "durable-objects", "hyperdrive", "ssr-sites"],
   },
   {
     title: "Integrations",

@@ -3,7 +3,7 @@ title: Vectorize
 description: Cloudflare Vectorize vector database
 ---
 
-Vectorize is a vector database for AI embeddings and similarity search.
+Vectorize is Cloudflare’s vector database for embeddings and similarity search. Pair it with Workers AI (or your own embedding pipeline) to build semantic search, recommendations, and RAG-style retrieval.
 
 ## Basic Usage
 
@@ -30,6 +30,13 @@ export default $config({
   },
 });
 ```
+
+## Typical Flow
+
+1. Generate embeddings for documents (at ingest time or on demand)
+2. Upsert vectors into a Vectorize index with metadata
+3. Generate an embedding for the user query
+4. Query for nearest neighbors, optionally filtering by metadata
 
 ## Options
 
@@ -137,3 +144,7 @@ interface VectorizeOutput {
   name: string;
 }
 ```
+
+## Next Steps
+
+- [Worker](/docs/worker) — Binding Vectorize and AI to Workers

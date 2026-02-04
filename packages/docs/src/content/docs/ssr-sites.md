@@ -3,7 +3,12 @@ title: SSR Sites
 description: Deploy server-rendered sites with Lumier
 ---
 
-Deploy full-stack frameworks like Next.js, Remix, SvelteKit, and Astro.
+Deploy full-stack frameworks like Next.js, Remix, SvelteKit, and Astro on Cloudflare.
+
+Lumier supports two common patterns:
+
+- **Worker-based apps (SSR / edge rendering)** — Use `Worker()` with an entrypoint produced by your framework adapter.
+- **Static sites** — Use `StaticSite()` for prebuilt assets.
 
 ## Basic Usage
 
@@ -27,6 +32,8 @@ export default $config({
   },
 });
 ```
+
+This pattern is useful when your framework outputs a Worker entrypoint plus an assets directory.
 
 ## Static Sites
 
@@ -71,6 +78,10 @@ StaticSite("docs", {
 | `htmlHandling`     | `string` | `"auto-trailing-slash"` | URL path handling              |
 | `buildCommand`     | `string` | —                       | Build command to run           |
 | `buildOutput`      | `string` | —                       | Build output directory         |
+
+### Build Hooks
+
+If you set `buildCommand`, Lumier can run your build before deploying. Use `buildOutput` when your build output directory differs from `path`.
 
 ### Not Found Handling
 
@@ -142,6 +153,11 @@ export default $config({
   },
 });
 ```
+
+## Next Steps
+
+- [Worker](/docs/worker) — Worker options and bindings
+- [Configuration](/docs/config) — Stage patterns and binding types
 
 ## Output
 

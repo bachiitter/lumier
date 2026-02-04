@@ -3,7 +3,13 @@ title: KV
 description: Cloudflare Workers KV key-value store
 ---
 
-KV is a global, low-latency key-value store.
+KV is Cloudflare’s global, low-latency key-value store. It’s a great fit for cache-ish workloads, small pieces of shared state, and read-heavy data.
+
+Use KV when you want:
+
+- Fast global reads
+- Simple key/value access from Workers
+- Low operational overhead
 
 ## Basic Usage
 
@@ -14,13 +20,14 @@ export default $config({
   app() {
     return { name: "my-app", protect: ["production"] };
   },
-  run() {
+  run(ctx) {
     const cache = KV("cache");
 
     Worker("api", {
       entry: "src/index.ts",
       bindings: {
         CACHE: cache,
+        STAGE: ctx.stage,
       },
     });
   },
@@ -33,6 +40,15 @@ export default $config({
 KV("cache", {
   // Currently no additional options
 });
+```
+
+## Key Design
+
+KV doesn’t enforce structure—your keys do. A common pattern is prefixing keys by stage or namespace:
+
+```ts
+const key = `${env.STAGE}:user:${userId}`;
+await env.CACHE.put(key, JSON.stringify(user));
 ```
 
 ## Using Existing Namespace
@@ -97,6 +113,16 @@ const binary = await env.CACHE.get("binary", { type: "arrayBuffer" });
 const stream = await env.CACHE.get("large", { type: "stream" });
 ```
 
+## When Not to Use KV
+
+KV is optimized for global reads and simple access patterns. If you need:
+
+- Strong consistency for writes
+- Complex queries
+- Relational data modeling
+
+Use [D1](/docs/d1) or another database instead.
+
 ## Output
 
 ```ts
@@ -106,3 +132,8 @@ interface KVOutput {
   namespaceId: string;
 }
 ```
+
+## Next Steps
+
+- [Configuration](/docs/config) — Bindings and stage patterns
+- [Worker](/docs/worker) — Binding resources to Workers

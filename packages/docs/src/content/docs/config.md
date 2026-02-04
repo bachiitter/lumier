@@ -3,7 +3,7 @@ title: Configuration
 description: Configure your Lumier infrastructure
 ---
 
-Lumier uses a `lumier.config.ts` file at your project root.
+Lumier uses a single `lumier.config.ts` file at your project root. The file is TypeScript: you can compose infrastructure with real code, and Lumier can generate types for Worker bindings.
 
 ## Basic Structure
 
@@ -18,11 +18,22 @@ export default $config({
     };
   },
   run(ctx) {
-    // Define resources here
-    return { /* outputs */ };
+    // Define resources here and return any useful outputs
+    return {};
   },
 });
 ```
+
+## How It Runs
+
+When you run Lumier commands, Lumier:
+
+1. Loads `lumier.config.ts`
+2. Calls `app()` to get global settings
+3. Calls `run(ctx)` with a stage-aware context
+4. Builds a resource graph and applies the requested action (preview/deploy/etc.)
+
+Because `run(ctx)` is just code, you can branch safely by stage, reuse helper functions, and keep everything in one place.
 
 ## App Configuration
 
@@ -41,6 +52,10 @@ app() {
 | --------- | ---------- | ------------------------------------------------ |
 | `name`    | `string`   | Application name, used as prefix for resources   |
 | `protect` | `string[]` | Stages that require confirmation before changes  |
+
+### Stage Protection
+
+The `protect` list is a guardrail. If a stage is protected, destructive actions require extra intent. This is commonly used for `production`.
 
 ## Runtime Context
 
@@ -61,6 +76,21 @@ run(ctx) {
 | `isProduction` | `boolean`   | True if stage is "production"    |
 | `isDev`        | `boolean`   | True if not production           |
 | `app`          | `AppConfig` | App configuration                |
+
+### Stage-Aware Config
+
+Use `ctx.stage` (or `ctx.isProduction`) to safely vary behavior:
+
+```ts
+run(ctx) {
+  const enableLogs = !ctx.isProduction;
+
+  // Example: use a different domain per stage
+  const domain = ctx.isProduction ? "api.example.com" : undefined;
+
+  return { enableLogs, domain };
+}
+```
 
 ## Bindings
 
@@ -98,6 +128,14 @@ const api = Worker("api", {
 | Browser       | `{ type: "browser" }`                    |
 | Plain text    | `{ type: "plain_text", value: "..." }`   |
 | Secret text   | `{ type: "secret_text", value: "..." }`  |
+| JSON          | `{ type: "json", value: { ... } }`       |
+| Service       | `{ type: "service", service: "..." }`    |
+
+### Binding Tips
+
+- Prefer binding resources (like `D1("database")`) over manually wiring IDs in app code.
+- Use `Secret("NAME")` for values that must not be committed.
+- Keep binding names stable: changing a binding name changes your Worker’s `Env` type.
 
 ## Outputs
 
@@ -113,6 +151,12 @@ run(ctx) {
   };
 }
 ```
+
+Outputs are useful for:
+
+- Exposing URLs for apps and webhooks
+- Debugging stage-specific values
+- Passing values to external tools (for example via a “shell” or output command)
 
 ## Using Existing Resources
 
@@ -130,4 +174,23 @@ const cache = KV.existing("cache", {
 const bucket = Bucket.existing("uploads", {
   bucketName: "my-existing-bucket",
 });
+```
+
+## Recommended Layout
+
+As your config grows, keep it readable:
+
+- Put core resources at the top (databases, KV, buckets, queues)
+- Define Workers next, binding resources explicitly
+- Return outputs at the end
+
+For larger stacks, factor helpers:
+
+```ts
+function ApiWorker(ctx: RuntimeContext) {
+  return Worker("api", {
+    entry: "src/index.ts",
+    bindings: { STAGE: ctx.stage },
+  });
+}
 ```

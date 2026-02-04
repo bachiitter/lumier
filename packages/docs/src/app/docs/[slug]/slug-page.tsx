@@ -1,8 +1,10 @@
 "use client";
 
 import { IconList } from "@tabler/icons-react";
-import { cn } from "orphos/utils";
+import Link from "next/link";
+import { Button } from "orphos/button";
 import { typographyVariants } from "orphos/typography";
+import { cn } from "orphos/utils";
 import { useEffect, useState } from "react";
 import { CopyButton } from "~/components/copy-button";
 import { RenderMarkdown } from "~/components/render-markdown";
@@ -12,6 +14,11 @@ interface TocItem {
   url: string;
   depth: number;
 }
+
+type PageNav = {
+  prev: { slug: string; title: string } | null;
+  next: { slug: string; title: string } | null;
+};
 
 interface PageData {
   title: string;
@@ -49,7 +56,7 @@ function useActiveHeading(headingIds: string[]) {
   return activeId;
 }
 
-export function SlugPage({ page }: { page: PageData }) {
+export function SlugPage({ page, nav }: { page: PageData; nav: PageNav }) {
   const tocItems = page.toc.filter((item) => item.depth > 1);
   const headingIds = tocItems.map((item) => item.url.replace("#", ""));
   const activeId = useActiveHeading(headingIds);
@@ -79,29 +86,74 @@ export function SlugPage({ page }: { page: PageData }) {
             </p>
           </header>
           <RenderMarkdown content={page.content} />
+
+          {(nav.prev || nav.next) && (
+            <nav className="mt-16 border-t border-border-subtle pt-8">
+              <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+                {nav.prev ? (
+                  <Button
+                    variant="default"
+                    size="lg"
+                    render={<Link href={`/docs/${nav.prev.slug}`} />}
+                    className={cn(
+                      "h-auto w-full items-start justify-start whitespace-normal border-border-subtle bg-background-subtle py-4",
+                      "sm:max-w-[48%]"
+                    )}
+                  >
+                    <span className="flex flex-col gap-2 text-left">
+                      <span className="text-xs font-semibold uppercase tracking-[0.38em] text-foreground-subtle">
+                        Previous
+                      </span>
+                      <span className="text-sm font-semibold text-foreground">{nav.prev.title}</span>
+                    </span>
+                  </Button>
+                ) : null}
+
+                {nav.next ? (
+                  <Button
+                    variant="default"
+                    size="lg"
+                    render={<Link href={`/docs/${nav.next.slug}`} />}
+                    className={cn(
+                      "h-auto w-full items-start justify-end whitespace-normal border-border-subtle bg-background-subtle py-4",
+                      "sm:max-w-[48%] sm:ml-auto"
+                    )}
+                  >
+                    <span className="flex flex-col gap-2 text-right">
+                      <span className="text-xs font-semibold uppercase tracking-[0.38em] text-foreground-subtle">
+                        Next
+                      </span>
+                      <span className="text-sm font-semibold text-foreground">{nav.next.title}</span>
+                    </span>
+                  </Button>
+                ) : null}
+              </div>
+            </nav>
+          )}
         </div>
       </article>
       <aside className="hidden xl:block w-56">
-        <div className="sticky top-20 text-sm space-y-2">
+        <div className="fixed top-28 text-sm space-y-2">
           <h2 className="font-medium flex items-center gap-1">
             <IconList className="size-4" />
             On this page
           </h2>
-          <nav>
+          <nav aria-label="Table of contents">
             <ol className="flex flex-col gap-1">
               {tocItems.map((item) => {
                 const id = item.url.replace("#", "");
                 const isActive = activeId === id;
+                const indent = Math.max(0, item.depth - 2);
+
                 return (
-                  <li key={item.url}>
+                  <li key={item.url} style={{ paddingLeft: `${indent * 12}px` }}>
                     <a
                       href={item.url}
                       className={cn(
                         "transition-colors hover:text-foreground",
-                        isActive
-                          ? "text-foreground font-medium"
-                          : "text-foreground-subtle"
+                        isActive ? "text-foreground font-medium" : "text-foreground-subtle"
                       )}
+                      aria-current={isActive ? "true" : undefined}
                     >
                       {item.title}
                     </a>

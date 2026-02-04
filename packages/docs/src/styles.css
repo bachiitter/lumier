@@ -10,6 +10,25 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Landing page animations */
+@keyframes float {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) translateY(0px);
+  }
+  50% {
+    transform: translate(-50%, -50%) translateY(-30px);
+  }
+}
+
+.animate-float {
+  animation: float 20s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: float 15s ease-in-out infinite reverse;
+}
+
 @layer base {
   * {
     -webkit-tap-highlight-color: transparent;

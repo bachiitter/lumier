@@ -2,6 +2,7 @@
 
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "orphos/sidebar";
 import { AppSidebar } from "~/components/app-sidebar";
+import { DocsSearch } from "~/components/docs-search";
 import { ThemeSwitcher } from "~/components/theme-switcher";
 import { META } from "~/content/docs/meta";
 
@@ -23,7 +24,10 @@ export default function DocsLayout({
       <SidebarInset>
         <header className="sticky inset-x-0 top-0 isolate z-20 flex shrink-0 items-center gap-2 border-b bg-background">
           <div className="flex h-(--header-height) w-full items-center justify-between gap-2 px-4">
-            <SidebarTrigger />
+            <div className="flex items-center gap-2">
+              <SidebarTrigger />
+              <DocsSearch />
+            </div>
             <ThemeSwitcher />
           </div>
         </header>
